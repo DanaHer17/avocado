@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>דוח סיכום טיפולים</title>
+    <style>
+        :root {
+            --bg: #f0f3f2;
+            --card: #fff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --accent: #0d9488;
+            --accent-dark: #0f766e;
+            --border: #e2e8f0;
+            --danger: #dc2626;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 1rem 1rem 2.5rem;
+            line-height: 1.5;
+        }
+        .wrap { max-width: 1100px; margin: 0 auto; }
+        h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin: 0 0 0.25rem;
+            color: var(--text);
+        }
+        .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            border: 1px solid var(--border);
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 0.35rem;
+        }
+        input[type="number"], input[type="text"], input[type="month"] {
+            width: 100%;
+            padding: 0.5rem 0.65rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        input:focus {
+            outline: 2px solid rgba(13, 148, 136, 0.35);
+            border-color: var(--accent);
+        }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-top: 1.4rem;
+        }
+        .check-row input { width: auto; }
+        .check-row label { margin: 0; font-size: 0.95rem; color: var(--text); }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-dark); }
+        .btn-ghost {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { background: var(--bg); color: var(--text); }
+        .btn-danger { background: var(--danger); color: #fff; font-size: 0.8rem; padding: 0.35rem 0.65rem; }
+        .save-hint {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-inline-start: auto;
+        }
+        .save-hint.saved { color: var(--accent-dark); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 0.4rem 0.35rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        td input { min-width: 0; font-size: 0.8rem; padding: 0.35rem; }
+        .name-input-shell {
+            display: block;
+            padding: 3px;
+            border-radius: 10px;
+            transition: background 0.18s ease, box-shadow 0.18s ease;
+        }
+        .name-input-shell:focus-within {
+            background: rgba(13, 148, 136, 0.14);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+        .col-name input {
+            width: 100%;
+            min-width: 6rem;
+            text-align: right;
+            caret-color: var(--accent-dark);
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .col-name input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: inset 0 0 0 1px rgba(13, 148, 136, 0.25);
+        }
+        .col-name input:focus-visible {
+            outline: none;
+        }
+        .col-num input { width: 3rem; }
+        .col-dates { text-align: right; min-width: 12rem; max-width: 28rem; }
+        .date-row-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            align-items: center;
+            justify-content: flex-end;
+            margin-bottom: 0.35rem;
+        }
+        .date-slot {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.15rem;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.15rem 0.25rem 0.15rem 0.15rem;
+        }
+        .date-slot input[type="date"] {
+            width: auto;
+            min-width: 8.5rem;
+            border: none;
+            background: transparent;
+            font-size: 0.8rem;
+            padding: 0.25rem;
+        }
+        .date-slot input.sess-date-legacy {
+            width: 5.5rem;
+            min-width: 5rem;
+            border: none;
+            background: transparent;
+            text-align: center;
+        }
+        .date-remove {
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0 0.2rem;
+            border-radius: 4px;
+        }
+        .date-remove:hover { color: var(--danger); background: #fef2f2; }
+        .btn-mini {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            border: 1px dashed var(--border);
+            background: #fff;
+            color: var(--accent-dark);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-mini:hover { border-color: var(--accent); background: #f0fdfa; }
+        .group-fields {
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+        }
+        .extras-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.9rem;
+            margin-top: 0.75rem;
+        }
+        .extra-box {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.65rem;
+            background: #fcfffe;
+        }
+        .extra-box h3 {
+            margin: 0 0 0.45rem;
+            font-size: 0.9rem;
+            color: var(--accent-dark);
+        }
+        .mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.77rem;
+        }
+        .mini-table th, .mini-table td {
+            border: 1px solid var(--border);
+            padding: 0.25rem;
+            text-align: center;
+        }
+        .mini-table input { width: 100%; min-width: 0; font-size: 0.75rem; padding: 0.25rem; }
+        .mini-toolbar { margin-top: 0.4rem; display: flex; gap: 0.35rem; align-items: center; }
+        .mini-note { color: var(--muted); font-size: 0.74rem; margin-top: 0.25rem; }
+        .is-hidden { display: none !important; }
+        .summary {
+            background: linear-gradient(135deg, #134e4a 0%, #0f766e 100%);
+            color: #ecfdf5;
+            border: none;
+        }
+        .summary h2 { font-size: 1rem; margin: 0 0 0.75rem; font-weight: 600; }
+        .summary dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.35rem 1rem;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .summary dt { color: rgba(236,253,245,.75); }
+        .summary dd { margin: 0; font-weight: 600; }
+        .grand {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,.2);
+            font-size: 1.15rem;
+        }
+        .grand span { color: #fde047; }
+        @media (max-width: 900px) {
+            .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 520px; }
+        }
+        .export-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .export-bar .btn-export {
+            background: #fff;
+            color: var(--accent-dark);
+            border: 1px solid var(--border);
+        }
+        .export-bar .btn-export:hover { background: #f0fdfa; border-color: var(--accent); }
+        .export-note {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin: 0.75rem 0 0;
+            line-height: 1.45;
+        }
+        @media print {
+            body { background: #fff; padding: 0.5cm; }
+            .no-print { display: none !important; }
+            .scroll-x { overflow: visible !important; }
+            table { min-width: 0 !important; font-size: 10pt; }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .summary { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>דוח סיכום טיפולים</h1>
+    <p class="subtitle">בוחרים תאריך מפגש מלוח שנה, אפשר להוסיף שדות עם «+ תאריך», ומספר המפגשים מתעדכן לפי התאריכים (ניתן לתקן ידנית). הנתונים נשמרים אוטומטית בדפדפן — אפשר לחזור ולערוך בכל עת, ללחוץ «שמירה עכשיו», ולייצא שוב אחרי תיקון.</p>
+
+    <div class="card">
+        <div class="settings-grid">
+            <div>
+                <label for="period">חודש / תקופה</label>
+                <input type="month" id="period" />
+            </div>
+            <div>
+                <label for="baseSalary">שכר בסיס למטפלת (למפגש)</label>
+                <input type="number" id="baseSalary" value="215" min="0" step="1" />
+            </div>
+            <div>
+                <label for="clientRate">מחיר לטיפול פרטני (לקוח)</label>
+                <input type="number" id="clientRate" value="370" min="0" step="1" />
+            </div>
+            <div class="check-row">
+                <input type="checkbox" id="meetingBonus" />
+                <label for="meetingBonus">השתתפות בישיבה חודשית — +5 ₪ לשכר הבסיס לכל מפגש שמחושב</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="check-row" style="padding-top:0;">
+            <input type="checkbox" id="groupEnabled" />
+            <label for="groupEnabled">האם מדריכה קבוצה?</label>
+        </div>
+        <div id="groupFields" class="group-fields is-hidden">
+            <div class="settings-grid">
+                <div>
+                    <label for="groupRate">מחיר למפגש קבוצה</label>
+                    <input type="number" id="groupRate" min="0" step="1" value="0" />
+                </div>
+                <div>
+                    <label for="groupChildren">כמה ילדים בקבוצה</label>
+                    <input type="number" id="groupChildren" min="1" step="1" value="1" />
+                </div>
+                <div>
+                    <label>מספר מפגשי קבוצה (אוטומטי לפי תאריכים)</label>
+                    <input type="number" id="groupSessions" min="0" step="1" value="0" readonly />
+                </div>
+            </div>
+            <div style="margin-top:0.75rem;">
+                <label>תאריכי מפגשי קבוצה</label>
+                <div id="groupDateList" class="date-row-list" style="justify-content:flex-start;"></div>
+                <button type="button" class="btn-mini" id="addGroupDateBtn">+ תאריך קבוצה</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="toolbar no-print">
+            <button type="button" class="btn btn-primary" id="addRow">+ הוספת מטופל</button>
+            <button type="button" class="btn btn-ghost" id="clearAll">איפוס טבלה</button>
+            <button type="button" class="btn btn-ghost" id="saveNow" title="השמירה האוטומטית פעילה תמיד">שמירה עכשיו</button>
+            <span class="save-hint" id="saveHint" aria-live="polite"></span>
+        </div>
+        <div class="scroll-x">
+            <table id="patientTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>שם המטופל</th>
+                        <th>תאריכי מפגשים</th>
+                        <th>מפגשים <span style="font-weight:400;font-size:0.75rem">(אוטו׳)</span></th>
+                        <th>ביטול בתשלום</th>
+                        <th>ביטול ללא תשלום</th>
+                        <th>סה״כ שורה</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card summary">
+        <h2>סיכום לתשלום מהמרכז</h2>
+        <dl>
+            <dt>שכר בסיס + בונוס ישיבה (למפגש)</dt>
+            <dd id="effectiveRate">0</dd>
+            <dt>סה״כ מפגשים לחישוב (מפגשים + ביטולים בתשלום)</dt>
+            <dd id="totalBillable">0</dd>
+            <dt>סה״כ ביטולים ללא תשלום (תיעוד)</dt>
+            <dd id="totalUnpaidCancels">0</dd>
+            <dt>סה״כ פרטני</dt>
+            <dd id="individualTotal">0</dd>
+            <dt>סה״כ קבוצה</dt>
+            <dd id="groupTotal">0</dd>
+            <dt>פגישות הורים (למטפלת)</dt>
+            <dd id="parentMeetingsTotal">0</dd>
+            <dt>הערכות שפה (למטפלת)</dt>
+            <dd id="languageEvalTherapistTotal">0</dd>
+            <dt>הערכות שפה (למרכז)</dt>
+            <dd id="languageEvalCenterTotal">0</dd>
+            <dt>אבחונים (למטפלת)</dt>
+            <dd id="diagnosticsTotal">0</dd>
+            <dt>מפגשי הערכה לילדי קבוצה</dt>
+            <dd id="groupAssessmentsTotal">0</dd>
+            <dt>הוצאות קורסים (יורד מהמטפלת)</dt>
+            <dd id="courseExpensesTotal">0</dd>
+            <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
+            <dd id="grossIndividualTotal">0</dd>
+            <dt>חלק המרכז (פרטני בלבד)</dt>
+            <dd id="centerTotal">0</dd>
+        </dl>
+        <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
+    </div>
+
+    <div class="card">
+        <h2 style="font-size:1rem;margin:0 0 0.75rem;">רכיבים אופציונליים לשכר</h2>
+        <div class="extras-grid">
+            <div class="extra-box">
+                <h3>פגישות הורים (ילדי קבוצה)</h3>
+                <table class="mini-table">
+                    <thead><tr><th>שם ילד</th><th>תאריך</th><th></th></tr></thead>
+                    <tbody id="parentMeetingsBody"></tbody>
+                </table>
+                <div class="mini-toolbar">
+                    <button type="button" class="btn-mini" id="addParentMeeting">+ פגישת הורים</button>
+                    <span class="mini-note">כל פגישה = שכר בסיס למטפלת (כולל בונוס ישיבה אם קיים).</span>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <h3>הערכות שפה</h3>
+                <table class="mini-table">
+                    <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר הערכה</th><th>למטפלת</th><th></th></tr></thead>
+                    <tbody id="languageEvalBody"></tbody>
+                </table>
+                <div class="mini-toolbar">
+                    <button type="button" class="btn-mini" id="addLanguageEval">+ הערכת שפה</button>
+                    <span class="mini-note">ברירת מחדל: 500 סה״כ, 305 למטפלת.</span>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <h3>אבחונים</h3>
+                <table class="mini-table">
+                    <thead><tr><th>שם ילד</th><th>תאריך</th><th>למטפלת</th><th></th></tr></thead>
+                    <tbody id="diagnosticsBody"></tbody>
+                </table>
+                <div class="mini-toolbar">
+                    <button type="button" class="btn-mini" id="addDiagnostic">+ אבחון</button>
+                    <span class="mini-note">ברירת מחדל: 900 למטפלת לכל אבחון.</span>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <h3>מפגשי הערכה לילדי קבוצה</h3>
+                <table class="mini-table">
+                    <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר</th><th></th></tr></thead>
+                    <tbody id="groupAssessmentsBody"></tbody>
+                </table>
+                <div class="mini-toolbar">
+                    <button type="button" class="btn-mini" id="addGroupAssessment">+ מפגש הערכה</button>
+                    <span class="mini-note">ברירת מחדל: 150 למפגש.</span>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <h3>הוצאות קורסים (יורד מהמטפלת)</h3>
+                <table class="mini-table">
+                    <thead><tr><th>שם קורס</th><th>עלות</th><th></th></tr></thead>
+                    <tbody id="courseExpensesBody"></tbody>
+                </table>
+                <div class="mini-toolbar">
+                    <button type="button" class="btn-mini" id="addCourseExpense">+ קורס</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card no-print">
+        <h2 style="font-size:1rem;margin:0 0 0.75rem;">ייצוא לקובץ</h2>
+        <div class="export-bar">
+            <button type="button" class="btn btn-export" id="exportExcel">הורדה כ-Excel (.xlsx)</button>
+            <button type="button" class="btn btn-export" id="exportWord">הורדה כ-Word (.doc)</button>
+            <button type="button" class="btn btn-export" id="exportPdf">PDF (הדפסה / שמירה כ-PDF)</button>
+            <button type="button" class="btn btn-export" id="exportJson">גיבוי JSON</button>
+            <button type="button" class="btn btn-export" id="importJsonBtn">ייבוא מקובץ JSON</button>
+            <button type="button" class="btn btn-export" id="newMonthFromTemplateBtn">חודש חדש מהשמות הקיימים</button>
+            <button type="button" class="btn btn-export" id="importNamesJsonBtn">ייבוא שמות מטופלים בלבד (JSON)</button>
+        </div>
+        <input type="file" id="importJsonFile" accept="application/json,.json" hidden />
+        <input type="file" id="importNamesJsonFile" accept="application/json,.json" hidden />
+        <p class="export-note">
+            קבצי Excel ו-Word אפשר לפתוח ולערוך אחרי ההורדה. PDF מיוצא דרך חלון ההדפסה של הדפדפן — בחרי «שמור כ-PDF».
+            גיבוי JSON מאפשר להחזיר בדיוק את הטופס לכאן (תיקון טעויות או מחשב אחר), או לייבא רק את שמות המטופלים מדוח ישן.
+        </p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+(function () {
+    const STORAGE_KEY = 'avocado-treatment-report-v1';
+    /** מספר תאי תאריך בהתחלה לשורה חדשה (מוסיפים עוד עם «+ תאריך») */
+    const INITIAL_DATE_SLOTS = 1;
+    const MAX_DATE_SLOTS = 31;
+    const tbody = document.querySelector('#patientTable tbody');
+    const saveHint = document.getElementById('saveHint');
+    const periodInput = document.getElementById('period');
+    const groupEnabledInput = document.getElementById('groupEnabled');
+    const groupFields = document.getElementById('groupFields');
+    const groupRateInput = document.getElementById('groupRate');
+    const groupChildrenInput = document.getElementById('groupChildren');
+    const groupSessionsInput = document.getElementById('groupSessions');
+    const groupDateList = document.getElementById('groupDateList');
+    const addGroupDateBtn = document.getElementById('addGroupDateBtn');
+    const parentMeetingsBody = document.getElementById('parentMeetingsBody');
+    const languageEvalBody = document.getElementById('languageEvalBody');
+    const diagnosticsBody = document.getElementById('diagnosticsBody');
+    const groupAssessmentsBody = document.getElementById('groupAssessmentsBody');
+    const courseExpensesBody = document.getElementById('courseExpensesBody');
+    const addParentMeetingBtn = document.getElementById('addParentMeeting');
+    const addLanguageEvalBtn = document.getElementById('addLanguageEval');
+    const addDiagnosticBtn = document.getElementById('addDiagnostic');
+    const addGroupAssessmentBtn = document.getElementById('addGroupAssessment');
+    const addCourseExpenseBtn = document.getElementById('addCourseExpense');
+    let currentPeriod = '';
+    let saveTimer = null;
+
+    function effectiveRate() {
+        const base = parseFloat(document.getElementById('baseSalary').value) || 0;
+        const bonus = document.getElementById('meetingBonus').checked ? 5 : 0;
+        return base + bonus;
+    }
+
+    function isIsoDate(s) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(String(s).trim());
+    }
+
+    function countFilledDates(tr) {
+        return Array.from(tr.querySelectorAll('.date-slot input.sess-date, .date-slot input.sess-date-legacy'))
+            .filter(i => i.value.trim() !== '').length;
+    }
+
+    function syncSessionsFromDates(tr) {
+        const inp = tr.querySelector('.sessions');
+        if (!inp) return;
+        inp.value = String(countFilledDates(tr));
+    }
+
+    function buildDateSlotHtml(val) {
+        const v = String(val == null ? '' : val).trim();
+        const iso = isIsoDate(v);
+        const inputHtml = iso || v === ''
+            ? `<input type="date" class="sess-date" value="${escapeAttr(iso ? v : '')}" />`
+            : `<input type="text" class="sess-date sess-date-legacy" placeholder="למשל 4.2.26" value="${escapeAttr(v)}" inputmode="numeric" />`;
+        return `<span class="date-slot">${inputHtml}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
+    }
+
+    function countFilledGroupDates() {
+        return Array.from(groupDateList.querySelectorAll('input.group-date, input.group-date-legacy'))
+            .filter((i) => i.value.trim() !== '').length;
+    }
+
+    function syncGroupSessionsFromDates() {
+        groupSessionsInput.value = String(countFilledGroupDates());
+    }
+
+    function renderGroupDates(dates) {
+        const normalized = Array.isArray(dates) ? dates : [''];
+        const safeDates = normalized.length ? normalized : [''];
+        groupDateList.innerHTML = safeDates
+            .map((d) => {
+                const v = String(d == null ? '' : d).trim();
+                const iso = isIsoDate(v);
+                const input = iso || v === ''
+                    ? `<input type="date" class="group-date" value="${escapeAttr(iso ? v : '')}" />`
+                    : `<input type="text" class="group-date group-date-legacy" placeholder="למשל 4.2.26" value="${escapeAttr(v)}" inputmode="numeric" />`;
+                return `<span class="date-slot">${input}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
+            })
+            .join('');
+        syncGroupSessionsFromDates();
+    }
+
+    function collectGroupState() {
+        const groupDates = Array.from(groupDateList.querySelectorAll('input.group-date, input.group-date-legacy'))
+            .map((i) => i.value.trim());
+        return {
+            enabled: !!groupEnabledInput.checked,
+            rate: parseFloat(groupRateInput.value) || 0,
+            children: Math.max(1, Math.floor(parseFloat(groupChildrenInput.value) || 1)),
+            sessions: countFilledGroupDates(),
+            dates: groupDates
+        };
+    }
+
+    function toggleGroupVisibility() {
+        if (groupEnabledInput.checked) {
+            groupFields.classList.remove('is-hidden');
+        } else {
+            groupFields.classList.add('is-hidden');
+        }
+    }
+
+    function toAmount(value, fallback) {
+        const n = parseFloat(value);
+        if (Number.isNaN(n)) return fallback || 0;
+        return Math.max(0, n);
+    }
+
+    function wireMiniRowInputs(tr) {
+        tr.querySelectorAll('input').forEach((inp) => {
+            inp.addEventListener('input', schedulePersist);
+            inp.addEventListener('change', schedulePersist);
+        });
+        const del = tr.querySelector('.mini-del');
+        if (del) {
+            del.addEventListener('click', () => {
+                tr.remove();
+                schedulePersist();
+            });
+        }
+    }
+
+    function addParentMeetingRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="pm-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
+            <td><input type="date" class="pm-date" value="${escapeAttr(d.date)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        parentMeetingsBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
+    function addLanguageEvalRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="le-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
+            <td><input type="date" class="le-date" value="${escapeAttr(d.date)}" /></td>
+            <td><input type="number" min="0" step="1" class="le-total" value="${toAmount(d.total, 500)}" /></td>
+            <td><input type="number" min="0" step="1" class="le-therapist" value="${toAmount(d.therapist, 305)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        languageEvalBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
+    function addDiagnosticRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="dg-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
+            <td><input type="date" class="dg-date" value="${escapeAttr(d.date)}" /></td>
+            <td><input type="number" min="0" step="1" class="dg-pay" value="${toAmount(d.therapist, 900)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        diagnosticsBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
+    function addGroupAssessmentRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="ga-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
+            <td><input type="date" class="ga-date" value="${escapeAttr(d.date)}" /></td>
+            <td><input type="number" min="0" step="1" class="ga-price" value="${toAmount(d.price, 150)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        groupAssessmentsBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
+    function addCourseExpenseRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="ce-name" value="${escapeAttr(d.course)}" placeholder="שם קורס" /></td>
+            <td><input type="number" min="0" step="1" class="ce-cost" value="${toAmount(d.cost, 0)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        courseExpensesBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
+    function collectExtrasState() {
+        const parentMeetings = Array.from(parentMeetingsBody.querySelectorAll('tr')).map((tr) => ({
+            child: tr.querySelector('.pm-child')?.value.trim() || '',
+            date: tr.querySelector('.pm-date')?.value || ''
+        }));
+        const languageEvaluations = Array.from(languageEvalBody.querySelectorAll('tr')).map((tr) => ({
+            child: tr.querySelector('.le-child')?.value.trim() || '',
+            date: tr.querySelector('.le-date')?.value || '',
+            total: toAmount(tr.querySelector('.le-total')?.value, 500),
+            therapist: toAmount(tr.querySelector('.le-therapist')?.value, 305)
+        }));
+        const diagnostics = Array.from(diagnosticsBody.querySelectorAll('tr')).map((tr) => ({
+            child: tr.querySelector('.dg-child')?.value.trim() || '',
+            date: tr.querySelector('.dg-date')?.value || '',
+            therapist: toAmount(tr.querySelector('.dg-pay')?.value, 900)
+        }));
+        const groupAssessments = Array.from(groupAssessmentsBody.querySelectorAll('tr')).map((tr) => ({
+            child: tr.querySelector('.ga-child')?.value.trim() || '',
+            date: tr.querySelector('.ga-date')?.value || '',
+            price: toAmount(tr.querySelector('.ga-price')?.value, 150)
+        }));
+        const courseExpenses = Array.from(courseExpensesBody.querySelectorAll('tr')).map((tr) => ({
+            course: tr.querySelector('.ce-name')?.value.trim() || '',
+            cost: toAmount(tr.querySelector('.ce-cost')?.value, 0)
+        }));
+        return { parentMeetings, languageEvaluations, diagnostics, groupAssessments, courseExpenses };
+    }
+
+    function applyExtrasState(extras) {
+        const e = extras || {};
+        parentMeetingsBody.innerHTML = '';
+        languageEvalBody.innerHTML = '';
+        diagnosticsBody.innerHTML = '';
+        groupAssessmentsBody.innerHTML = '';
+        courseExpensesBody.innerHTML = '';
+
+        const p = Array.isArray(e.parentMeetings) ? e.parentMeetings : [];
+        const l = Array.isArray(e.languageEvaluations) ? e.languageEvaluations : [];
+        const d = Array.isArray(e.diagnostics) ? e.diagnostics : [];
+        const g = Array.isArray(e.groupAssessments) ? e.groupAssessments : [];
+        const c = Array.isArray(e.courseExpenses) ? e.courseExpenses : [];
+
+        p.forEach(addParentMeetingRow);
+        l.forEach(addLanguageEvalRow);
+        d.forEach(addDiagnosticRow);
+        g.forEach(addGroupAssessmentRow);
+        c.forEach(addCourseExpenseRow);
+    }
+
+    function wireDateRow(tr) {
+        if (tr.dataset.dateWired === '1') return;
+        tr.dataset.dateWired = '1';
+
+        const list = tr.querySelector('.date-row-list');
+        const addBtn = tr.querySelector('.add-date-btn');
+
+        list.addEventListener('input', (e) => {
+            if (!e.target.matches('.sess-date, .sess-date-legacy')) return;
+            syncSessionsFromDates(tr);
+            schedulePersist();
+        });
+        list.addEventListener('change', (e) => {
+            if (!e.target.matches('.sess-date, .sess-date-legacy')) return;
+            syncSessionsFromDates(tr);
+            schedulePersist();
+        });
+
+        list.addEventListener('click', (e) => {
+            const btn = e.target.closest('.date-remove');
+            if (!btn || !list.contains(btn)) return;
+            const slot = btn.closest('.date-slot');
+            if (!slot) return;
+            const slots = list.querySelectorAll('.date-slot');
+            if (slots.length <= 1) {
+                const inp = slot.querySelector('input');
+                if (inp) inp.value = '';
+            } else {
+                slot.remove();
+            }
+            syncSessionsFromDates(tr);
+            schedulePersist();
+        });
+
+        addBtn.addEventListener('click', () => {
+            if (list.querySelectorAll('.date-slot').length >= MAX_DATE_SLOTS) return;
+            const wrap = document.createElement('span');
+            wrap.className = 'date-slot';
+            wrap.innerHTML = `<input type="date" class="sess-date" value="" /><button type="button" class="date-remove" title="הסר תאריך">×</button>`;
+            list.appendChild(wrap);
+            syncSessionsFromDates(tr);
+            schedulePersist();
+            wrap.querySelector('input')?.focus();
+        });
+
+        tr.querySelector('.sessions')?.addEventListener('input', schedulePersist);
+        tr.querySelector('.sessions')?.addEventListener('change', schedulePersist);
+    }
+
+    function rowDataFromTr(tr) {
+        const dates = Array.from(tr.querySelectorAll('.date-slot input.sess-date, .date-slot input.sess-date-legacy'))
+            .map(i => i.value.trim());
+        return {
+            name: tr.querySelector('.col-name input')?.value.trim() ?? '',
+            dates,
+            sessions: parseFloat(tr.querySelector('.sessions')?.value) || 0,
+            cancelPaid: parseFloat(tr.querySelector('.cancel-paid')?.value) || 0,
+            cancelUnpaid: parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0
+        };
+    }
+
+    function collectState() {
+        const rows = Array.from(tbody.querySelectorAll('tr')).map(rowDataFromTr);
+        return {
+            period: periodInput.value,
+            baseSalary: document.getElementById('baseSalary').value,
+            clientRate: document.getElementById('clientRate').value,
+            meetingBonus: document.getElementById('meetingBonus').checked,
+            group: collectGroupState(),
+            extras: collectExtrasState(),
+            rows
+        };
+    }
+
+    function applyState(s) {
+        if (!s || typeof s !== 'object') return;
+        if (s.period != null) document.getElementById('period').value = s.period;
+        if (s.baseSalary != null) document.getElementById('baseSalary').value = String(s.baseSalary);
+        if (s.clientRate != null) document.getElementById('clientRate').value = String(s.clientRate);
+        document.getElementById('meetingBonus').checked = !!s.meetingBonus;
+        const g = s.group || {};
+        groupEnabledInput.checked = !!g.enabled;
+        groupRateInput.value = String(g.rate == null ? 0 : g.rate);
+        groupChildrenInput.value = String(g.children == null ? 1 : g.children);
+        renderGroupDates(Array.isArray(g.dates) ? g.dates : ['']);
+        toggleGroupVisibility();
+        applyExtrasState(s.extras);
+        tbody.innerHTML = '';
+        const rows = Array.isArray(s.rows) && s.rows.length ? s.rows : [{}];
+        rows.forEach(r => addRow(r));
+        calculate();
+    }
+
+    function defaultPeriodValue() {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function extractTemplateNames(rows) {
+        const names = [];
+        const seen = new Set();
+        (Array.isArray(rows) ? rows : []).forEach((row) => {
+            const name = (row && row.name ? String(row.name) : '').trim();
+            if (!name) return;
+            if (seen.has(name)) return;
+            seen.add(name);
+            names.push(name);
+        });
+        return names;
+    }
+
+    function rowsFromTemplate(names) {
+        const list = (Array.isArray(names) ? names : [])
+            .map((n) => (n == null ? '' : String(n)).trim())
+            .filter(Boolean);
+        if (!list.length) return [{}];
+        return list.map((name) => ({
+            name,
+            dates: [''],
+            sessions: 0,
+            cancelPaid: 0,
+            cancelUnpaid: 0
+        }));
+    }
+
+    function emptyExtrasState() {
+        return {
+            parentMeetings: [],
+            languageEvaluations: [],
+            diagnostics: [],
+            groupAssessments: [],
+            courseExpenses: []
+        };
+    }
+
+    function readStore() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { version: 2, reportsByPeriod: {}, patientTemplate: [] };
+        const parsed = JSON.parse(raw);
+
+        // Migration from old single-report format.
+        if (parsed && Array.isArray(parsed.rows)) {
+            const period = parsed.period || defaultPeriodValue();
+            return {
+                version: 2,
+                reportsByPeriod: { [period]: parsed },
+                patientTemplate: extractTemplateNames(parsed.rows)
+            };
+        }
+
+        if (parsed && typeof parsed === 'object') {
+            return {
+                version: 2,
+                reportsByPeriod: parsed.reportsByPeriod && typeof parsed.reportsByPeriod === 'object' ? parsed.reportsByPeriod : {},
+                patientTemplate: Array.isArray(parsed.patientTemplate) ? parsed.patientTemplate : []
+            };
+        }
+        return { version: 2, reportsByPeriod: {}, patientTemplate: [] };
+    }
+
+    function writeStore(store) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    }
+
+    function stampFilename() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function formatPeriodLabel(periodValue) {
+        if (!periodValue) return '';
+        const parts = String(periodValue).split('-');
+        if (parts.length >= 2) return `${parts[1]}/${parts[0]}`;
+        return periodValue;
+    }
+
+    function getSummary() {
+        const rate = effectiveRate();
+        const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
+        let totalBillable = 0;
+        let totalUnpaid = 0;
+        let individualTotal = 0;
+        tbody.querySelectorAll('tr').forEach(tr => {
+            const sessions = parseFloat(tr.querySelector('.sessions')?.value) || 0;
+            const cancelPaid = parseFloat(tr.querySelector('.cancel-paid')?.value) || 0;
+            const cancelUnpaid = parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0;
+            totalBillable += sessions + cancelPaid;
+            totalUnpaid += cancelUnpaid;
+            individualTotal += (sessions + cancelPaid) * rate;
+        });
+        const g = collectGroupState();
+        const extras = collectExtrasState();
+        const groupTotal = g.enabled ? (g.rate * g.sessions) : 0;
+        const parentMeetingsCount = extras.parentMeetings.filter((x) => x.child || x.date).length;
+        const parentMeetingsTotal = parentMeetingsCount * rate;
+        const languageEvalTherapistTotal = extras.languageEvaluations
+            .reduce((sum, x) => sum + toAmount(x.therapist, 305), 0);
+        const languageEvalCenterTotal = extras.languageEvaluations
+            .reduce((sum, x) => sum + Math.max(0, toAmount(x.total, 500) - toAmount(x.therapist, 305)), 0);
+        const diagnosticsTotal = extras.diagnostics
+            .reduce((sum, x) => sum + toAmount(x.therapist, 900), 0);
+        const groupAssessmentsTotal = extras.groupAssessments
+            .reduce((sum, x) => sum + toAmount(x.price, 150), 0);
+        const courseExpensesTotal = extras.courseExpenses
+            .reduce((sum, x) => sum + toAmount(x.cost, 0), 0);
+        const grossIndividualTotal = totalBillable * clientRate;
+        const centerTotal = Math.max(0, grossIndividualTotal - individualTotal) + languageEvalCenterTotal + courseExpensesTotal;
+        const grandTotal = individualTotal + groupTotal + parentMeetingsTotal + languageEvalTherapistTotal + diagnosticsTotal + groupAssessmentsTotal - courseExpensesTotal;
+        return {
+            rate,
+            clientRate,
+            totalBillable,
+            totalUnpaid,
+            individualTotal,
+            groupTotal,
+            parentMeetingsTotal,
+            languageEvalTherapistTotal,
+            languageEvalCenterTotal,
+            diagnosticsTotal,
+            groupAssessmentsTotal,
+            courseExpensesTotal,
+            grossIndividualTotal,
+            centerTotal,
+            grandTotal,
+            group: g,
+            extras
+        };
+    }
+
+    function downloadBlob(filename, blob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+
+    function escapeHtml(s) {
+        if (s == null || s === '') return '';
+        const str = String(s);
+        if (str === 'undefined' || str === 'null') return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function exportExcel() {
+        calculate();
+        const s = collectState();
+        const sum = getSummary();
+        const period = formatPeriodLabel(s.period);
+        const aoa = [];
+        aoa.push(['דוח סיכום טיפולים']);
+        aoa.push(['חודש / תקופה', period]);
+        aoa.push(['שכר בסיס למטפלת', s.baseSalary, 'מחיר לטיפול פרטני', s.clientRate, 'ישיבה חודשית (+5)', s.meetingBonus ? 'כן' : 'לא']);
+        aoa.push([]);
+        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום', 'ביטול ללא תשלום', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
+        tbody.querySelectorAll('tr').forEach((tr, i) => {
+            const rd = rowDataFromTr(tr);
+            const billable = (rd.sessions || 0) + (rd.cancelPaid || 0);
+            const rowTotal = billable * sum.rate;
+            aoa.push([
+                i + 1,
+                rd.name,
+                (rd.dates || []).filter(Boolean).join(', '),
+                rd.sessions,
+                rd.cancelPaid,
+                rd.cancelUnpaid,
+                rowTotal || '',
+                sum.rate
+            ]);
+        });
+        aoa.push([]);
+        aoa.push(['סה״כ מפגשים לחישוב', sum.totalBillable]);
+        aoa.push(['סה״כ ביטולים ללא תשלום', sum.totalUnpaid]);
+        aoa.push(['סה״כ פרטני (₪)', sum.individualTotal]);
+        aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
+        aoa.push(['חלק המרכז (₪)', sum.centerTotal]);
+        aoa.push(['פגישות הורים למטפלת (₪)', sum.parentMeetingsTotal]);
+        aoa.push(['הערכות שפה למטפלת (₪)', sum.languageEvalTherapistTotal]);
+        aoa.push(['הערכות שפה למרכז (₪)', sum.languageEvalCenterTotal]);
+        aoa.push(['אבחונים למטפלת (₪)', sum.diagnosticsTotal]);
+        aoa.push(['מפגשי הערכה לילדי קבוצה (₪)', sum.groupAssessmentsTotal]);
+        aoa.push(['הוצאות קורסים (₪)', sum.courseExpensesTotal]);
+        aoa.push(['מדריכת קבוצה?', sum.group.enabled ? 'כן' : 'לא']);
+        aoa.push(['תעריף קבוצה', sum.group.rate, 'ילדים בקבוצה (לתיעוד)', sum.group.children, 'מפגשי קבוצה', sum.group.sessions]);
+        aoa.push(['נוסחת קבוצה', 'תעריף × מפגשים (ללא כפל ילדים)']);
+        aoa.push(['תאריכי קבוצה', (sum.group.dates || []).filter(Boolean).join(', ')]);
+        aoa.push(['סה״כ קבוצה (₪)', sum.groupTotal]);
+        aoa.push(['סה״כ למטפלת (₪)', sum.grandTotal]);
+
+        if (sum.extras.parentMeetings.length) {
+            aoa.push([]);
+            aoa.push(['פגישות הורים']);
+            aoa.push(['שם ילד', 'תאריך', 'שכר למטפלת']);
+            sum.extras.parentMeetings.forEach((x) => {
+                if (!x.child && !x.date) return;
+                aoa.push([x.child, x.date, sum.rate]);
+            });
+        }
+        if (sum.extras.languageEvaluations.length) {
+            aoa.push([]);
+            aoa.push(['הערכות שפה']);
+            aoa.push(['שם ילד', 'תאריך', 'מחיר הערכה', 'למטפלת', 'למרכז']);
+            sum.extras.languageEvaluations.forEach((x) => {
+                aoa.push([x.child, x.date, x.total, x.therapist, Math.max(0, x.total - x.therapist)]);
+            });
+        }
+        if (sum.extras.diagnostics.length) {
+            aoa.push([]);
+            aoa.push(['אבחונים']);
+            aoa.push(['שם ילד', 'תאריך', 'למטפלת']);
+            sum.extras.diagnostics.forEach((x) => {
+                aoa.push([x.child, x.date, x.therapist]);
+            });
+        }
+        if (sum.extras.groupAssessments.length) {
+            aoa.push([]);
+            aoa.push(['מפגשי הערכה לילדי קבוצה']);
+            aoa.push(['שם ילד', 'תאריך', 'מחיר']);
+            sum.extras.groupAssessments.forEach((x) => {
+                aoa.push([x.child, x.date, x.price]);
+            });
+        }
+        if (sum.extras.courseExpenses.length) {
+            aoa.push([]);
+            aoa.push(['הוצאות קורסים']);
+            aoa.push(['שם קורס', 'עלות']);
+            sum.extras.courseExpenses.forEach((x) => {
+                aoa.push([x.course, x.cost]);
+            });
+        }
+
+        if (typeof XLSX === 'undefined') {
+            alert('טעינת Excel נכשלה (בדקי חיבור לאינטרנט ורענני את הדף).');
+            return;
+        }
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'דוח');
+        XLSX.writeFile(wb, `treatment-report-${stampFilename()}.xlsx`);
+    }
+
+    function exportWord() {
+        calculate();
+        const s = collectState();
+        const sum = getSummary();
+        const period = formatPeriodLabel(s.period);
+        let tableRows =
+            '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>סה״כ שורה</th></tr>';
+        tbody.querySelectorAll('tr').forEach((tr, i) => {
+            const rd = rowDataFromTr(tr);
+            const billable = (rd.sessions || 0) + (rd.cancelPaid || 0);
+            const rowTotal = billable * sum.rate;
+            const datesStr = (rd.dates || []).filter(Boolean).join(', ');
+            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${rd.cancelPaid}</td><td>${rd.cancelUnpaid}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
+        });
+        const html =
+            '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>דוח סיכום טיפולים</title></head><body dir="rtl" style="font-family:Arial,sans-serif;font-size:12pt">' +
+            '<h1 style="font-size:16pt">דוח סיכום טיפולים</h1>' +
+            `<p>חודש / תקופה: ${escapeHtml(period)} &nbsp;|&nbsp; שכר בסיס: ${escapeHtml(s.baseSalary)} &nbsp;|&nbsp; מחיר לטיפול פרטני: ${escapeHtml(s.clientRate)} &nbsp;|&nbsp; ישיבה חודשית: ${s.meetingBonus ? 'כן' : 'לא'}</p>` +
+            `<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">${tableRows}</table>` +
+            `<p><strong>תעריף למפגש:</strong> ${sum.rate} ₪<br>` +
+            `<strong>סה״כ מפגשים לחישוב:</strong> ${sum.totalBillable}<br>` +
+            `<strong>סה״כ ביטולים ללא תשלום:</strong> ${sum.totalUnpaid}<br>` +
+            `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
+            `<strong>סה״כ הכנסה פרטנית:</strong> ${sum.grossIndividualTotal} ₪<br>` +
+            `<strong>חלק המרכז (פרטני):</strong> ${sum.centerTotal} ₪<br>` +
+            `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
+            `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
+            `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
+            `<strong>מפגשי הערכה לילדי קבוצה:</strong> ${sum.groupAssessmentsTotal} ₪<br>` +
+            `<strong>הוצאות קורסים (יורד מהמטפלת):</strong> ${sum.courseExpensesTotal} ₪<br>` +
+            `<strong>קבוצה:</strong> ${sum.group.enabled ? 'כן' : 'לא'}<br>` +
+            `${sum.group.enabled ? `<strong>תעריף קבוצה:</strong> ${sum.group.rate} ₪ &nbsp;|&nbsp; <strong>ילדים:</strong> ${sum.group.children} &nbsp;|&nbsp; <strong>מפגשים:</strong> ${sum.group.sessions}<br><strong>נוסחה:</strong> תעריף × מפגשים (ללא כפל ילדים)<br><strong>תאריכי קבוצה:</strong> ${escapeHtml((sum.group.dates || []).filter(Boolean).join(', '))}<br><strong>סה״כ קבוצה:</strong> ${sum.groupTotal} ₪<br>` : ''}` +
+            `<strong>סה״כ למטפלת:</strong> ${sum.grandTotal} ₪</p>` +
+            '</body></html>';
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        downloadBlob(`treatment-report-${stampFilename()}.doc`, blob);
+    }
+
+    function exportJsonBackup() {
+        calculate();
+        const payload = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            ...collectState(),
+            summary: getSummary()
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+        downloadBlob(`treatment-backup-${stampFilename()}.json`, blob);
+    }
+
+    function importFromJsonObject(data) {
+        const core = data && data.rows ? data : null;
+        if (!core || !Array.isArray(core.rows)) {
+            throw new Error('הקובץ חייב להכיל מערך rows כמו בגיבוי האפליקציה');
+        }
+        applyState({
+            period: core.period,
+            baseSalary: core.baseSalary,
+            clientRate: core.clientRate,
+            meetingBonus: core.meetingBonus,
+            group: core.group,
+            extras: core.extras,
+            rows: core.rows
+        });
+        persist();
+    }
+
+    function createNextMonthReportFromTemplate() {
+        const current = periodInput.value || defaultPeriodValue();
+        const [y, m] = current.split('-').map(Number);
+        if (!y || !m) {
+            alert('ערך חודש לא תקין');
+            return;
+        }
+        const d = new Date(y, m - 1, 1);
+        d.setMonth(d.getMonth() + 1);
+        const nextPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+        const store = readStore();
+        const names = store.patientTemplate && store.patientTemplate.length
+            ? store.patientTemplate
+            : extractTemplateNames(collectState().rows);
+
+        if (store.reportsByPeriod[nextPeriod]) {
+            periodInput.value = nextPeriod;
+            load();
+            saveHint.textContent = 'עברנו לדוח קיים של החודש הבא';
+            saveHint.classList.add('saved');
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                saveHint.textContent = '';
+                saveHint.classList.remove('saved');
+            }, 2500);
+            return;
+        }
+
+        const baseSalary = document.getElementById('baseSalary').value;
+        const clientRate = document.getElementById('clientRate').value;
+        const meetingBonus = document.getElementById('meetingBonus').checked;
+        const newReport = {
+            period: nextPeriod,
+            baseSalary,
+            clientRate,
+            meetingBonus,
+            group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+            extras: emptyExtrasState(),
+            rows: rowsFromTemplate(names)
+        };
+        store.reportsByPeriod[nextPeriod] = newReport;
+        store.patientTemplate = extractTemplateNames(newReport.rows);
+        writeStore(store);
+
+        periodInput.value = nextPeriod;
+        applyState(newReport);
+        currentPeriod = nextPeriod;
+        saveHint.textContent = 'נוצר דוח חדש לחודש הבא';
+        saveHint.classList.add('saved');
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+            saveHint.textContent = '';
+            saveHint.classList.remove('saved');
+        }, 2500);
+    }
+
+    function extractRowsFromAnyJsonPayload(data) {
+        if (data && Array.isArray(data.rows)) return data.rows;
+        if (data && data.reportsByPeriod && typeof data.reportsByPeriod === 'object') {
+            const keys = Object.keys(data.reportsByPeriod).sort();
+            for (let i = keys.length - 1; i >= 0; i -= 1) {
+                const rep = data.reportsByPeriod[keys[i]];
+                if (rep && Array.isArray(rep.rows)) return rep.rows;
+            }
+        }
+        return [];
+    }
+
+    function importPatientNamesFromJsonObject(data) {
+        const rows = extractRowsFromAnyJsonPayload(data);
+        const names = extractTemplateNames(rows);
+        if (!names.length) throw new Error('לא נמצאו שמות מטופלים בקובץ');
+
+        const keepCurrent = confirm('ליצור את הדוח לחודש הנוכחי עם השמות שיובאו? (אישור = כן, ביטול = רק שמירת תבנית)');
+        const store = readStore();
+        store.patientTemplate = names;
+
+        if (keepCurrent) {
+            const currentState = collectState();
+            const rebuilt = {
+                period: periodInput.value || defaultPeriodValue(),
+                baseSalary: currentState.baseSalary,
+                clientRate: currentState.clientRate,
+                meetingBonus: currentState.meetingBonus,
+                group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+                extras: emptyExtrasState(),
+                rows: rowsFromTemplate(names)
+            };
+            store.reportsByPeriod[rebuilt.period] = rebuilt;
+            writeStore(store);
+            applyState(rebuilt);
+            currentPeriod = rebuilt.period;
+        } else {
+            writeStore(store);
+        }
+    }
+
+    function persist() {
+        try {
+            const state = collectState();
+            const period = state.period || defaultPeriodValue();
+            const store = readStore();
+            store.reportsByPeriod[period] = state;
+            store.patientTemplate = extractTemplateNames(state.rows);
+            writeStore(store);
+            currentPeriod = period;
+            saveHint.textContent = 'נשמר בדפדפן';
+            saveHint.classList.add('saved');
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                saveHint.textContent = '';
+                saveHint.classList.remove('saved');
+            }, 2000);
+        } catch (e) {
+            saveHint.textContent = 'שמירה נכשלה';
+        }
+    }
+
+    function schedulePersist() {
+        calculate();
+        persist();
+    }
+
+    function normalizeDatesArray(dates, fallbackSessions) {
+        let arr = Array.isArray(dates)
+            ? dates.map((x) => {
+                if (x == null) return '';
+                const t = String(x).trim();
+                return t === 'undefined' || t === 'null' ? '' : t;
+            })
+            : [];
+        while (arr.length > 1 && arr[arr.length - 1] === '') arr.pop();
+        if (arr.length === 0) arr.push('');
+
+        const sessionNeed = Math.ceil(Number(fallbackSessions) || 0);
+        const target = Math.min(
+            MAX_DATE_SLOTS,
+            Math.max(INITIAL_DATE_SLOTS, arr.length, sessionNeed)
+        );
+        while (arr.length < target) arr.push('');
+        return arr;
+    }
+
+    function addRow(data) {
+        const tr = document.createElement('tr');
+        const defaults = { name: '', dates: [], sessions: 0, cancelPaid: 0, cancelUnpaid: 0 };
+        const d = Object.assign({}, defaults, data && typeof data === 'object' ? data : {});
+        const dates = normalizeDatesArray(d.dates, d.sessions);
+        const n = (x) => Math.max(0, Math.floor(Number(x)) || 0);
+        const datesHtml = dates.map(dt => buildDateSlotHtml(dt)).join('');
+        tr.innerHTML = `
+            <td class="row-idx"></td>
+            <td class="col-name"><span class="name-input-shell"><input type="text" placeholder="שם" value="${escapeAttr(d.name)}" autocomplete="name" /></span></td>
+            <td class="col-dates">
+                <div class="date-row-list">${datesHtml}</div>
+                <button type="button" class="btn-mini add-date-btn">+ תאריך</button>
+            </td>
+            <td class="col-num"><input type="number" class="sessions" min="0" step="1" value="${n(d.sessions)}" title="מתעדכן אוטומטית לפי תאריכים; אפשר לתקן ידנית" /></td>
+            <td class="col-num"><input type="number" class="cancel-paid" min="0" step="1" value="${n(d.cancelPaid)}" /></td>
+            <td class="col-num"><input type="number" class="cancel-unpaid" min="0" step="1" value="${n(d.cancelUnpaid)}" /></td>
+            <td class="row-total">0</td>
+            <td><button type="button" class="btn btn-danger row-del">מחק</button></td>
+        `;
+        tr.querySelector('.col-name input').addEventListener('input', schedulePersist);
+        tr.querySelector('.col-name input').addEventListener('change', schedulePersist);
+        tr.querySelectorAll('.cancel-paid, .cancel-unpaid').forEach(inp => {
+            inp.addEventListener('input', schedulePersist);
+            inp.addEventListener('change', schedulePersist);
+        });
+        wireDateRow(tr);
+        const savedSessionCount = n(d.sessions);
+        syncSessionsFromDates(tr);
+        if (countFilledDates(tr) === 0 && savedSessionCount > 0) {
+            tr.querySelector('.sessions').value = String(savedSessionCount);
+        }
+        tr.querySelector('.row-del').addEventListener('click', () => {
+            tr.remove();
+            renumber();
+            schedulePersist();
+        });
+        tbody.appendChild(tr);
+        renumber();
+        calculate();
+    }
+
+    function escapeAttr(s) {
+        const str = s == null || s === '' ? '' : String(s);
+        if (str === 'undefined' || str === 'null') return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+    }
+
+    function renumber() {
+        tbody.querySelectorAll('tr').forEach((tr, i) => {
+            const c = tr.querySelector('.row-idx');
+            if (c) c.textContent = String(i + 1);
+        });
+    }
+
+    function calculate() {
+        const rate = effectiveRate();
+        document.getElementById('effectiveRate').textContent = rate.toLocaleString('he-IL');
+
+        tbody.querySelectorAll('tr').forEach(tr => {
+            const sessions = parseFloat(tr.querySelector('.sessions')?.value) || 0;
+            const cancelPaid = parseFloat(tr.querySelector('.cancel-paid')?.value) || 0;
+            const billable = sessions + cancelPaid;
+            const rowTotal = billable * rate;
+            tr.querySelector('.row-total').textContent =
+                rowTotal ? rowTotal.toLocaleString('he-IL') + ' ₪' : '—';
+        });
+
+        const sum = getSummary();
+        document.getElementById('totalBillable').textContent = sum.totalBillable.toLocaleString('he-IL');
+        document.getElementById('totalUnpaidCancels').textContent = sum.totalUnpaid.toLocaleString('he-IL');
+        document.getElementById('individualTotal').textContent = sum.individualTotal.toLocaleString('he-IL');
+        document.getElementById('groupTotal').textContent = sum.groupTotal.toLocaleString('he-IL');
+        document.getElementById('parentMeetingsTotal').textContent = sum.parentMeetingsTotal.toLocaleString('he-IL');
+        document.getElementById('languageEvalTherapistTotal').textContent = sum.languageEvalTherapistTotal.toLocaleString('he-IL');
+        document.getElementById('languageEvalCenterTotal').textContent = sum.languageEvalCenterTotal.toLocaleString('he-IL');
+        document.getElementById('diagnosticsTotal').textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
+        document.getElementById('groupAssessmentsTotal').textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
+        document.getElementById('courseExpensesTotal').textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
+        document.getElementById('grossIndividualTotal').textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
+        document.getElementById('centerTotal').textContent = sum.centerTotal.toLocaleString('he-IL');
+        document.getElementById('grandTotal').textContent = sum.grandTotal.toLocaleString('he-IL');
+    }
+
+    function load() {
+        try {
+            const store = readStore();
+            const selectedPeriod = periodInput.value || defaultPeriodValue();
+            periodInput.value = selectedPeriod;
+            const existing = store.reportsByPeriod[selectedPeriod];
+            if (existing) {
+                applyState(existing);
+                currentPeriod = selectedPeriod;
+                return;
+            }
+            applyState({
+                period: selectedPeriod,
+                baseSalary: document.getElementById('baseSalary').value,
+                clientRate: document.getElementById('clientRate').value,
+                meetingBonus: document.getElementById('meetingBonus').checked,
+                group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+                extras: emptyExtrasState(),
+                rows: rowsFromTemplate(store.patientTemplate)
+            });
+            currentPeriod = selectedPeriod;
+            persist();
+        } catch (e) {
+            tbody.innerHTML = '';
+            addRow();
+        }
+    }
+
+    document.getElementById('addRow').addEventListener('click', () => {
+        addRow();
+        persist();
+    });
+
+    document.getElementById('clearAll').addEventListener('click', () => {
+        if (!confirm('למחוק את כל השורות? הנתונים יימחקו מהטבלה (הגדרות יישארו).')) return;
+        tbody.innerHTML = '';
+        addRow();
+        persist();
+    });
+
+    ['baseSalary', 'clientRate', 'meetingBonus'].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', schedulePersist);
+        el.addEventListener('change', schedulePersist);
+    });
+
+    groupEnabledInput.addEventListener('change', () => {
+        toggleGroupVisibility();
+        schedulePersist();
+    });
+    [groupRateInput, groupChildrenInput].forEach((el) => {
+        el.addEventListener('input', schedulePersist);
+        el.addEventListener('change', schedulePersist);
+    });
+    addGroupDateBtn.addEventListener('click', () => {
+        if (groupDateList.querySelectorAll('.date-slot').length >= MAX_DATE_SLOTS) return;
+        const wrap = document.createElement('span');
+        wrap.className = 'date-slot';
+        wrap.innerHTML = '<input type="date" class="group-date" value="" /><button type="button" class="date-remove" title="הסר תאריך">×</button>';
+        groupDateList.appendChild(wrap);
+        syncGroupSessionsFromDates();
+        schedulePersist();
+        wrap.querySelector('input')?.focus();
+    });
+    groupDateList.addEventListener('input', (e) => {
+        if (!e.target.matches('.group-date, .group-date-legacy')) return;
+        syncGroupSessionsFromDates();
+        schedulePersist();
+    });
+    groupDateList.addEventListener('change', (e) => {
+        if (!e.target.matches('.group-date, .group-date-legacy')) return;
+        syncGroupSessionsFromDates();
+        schedulePersist();
+    });
+    groupDateList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.date-remove');
+        if (!btn || !groupDateList.contains(btn)) return;
+        const slot = btn.closest('.date-slot');
+        if (!slot) return;
+        const slots = groupDateList.querySelectorAll('.date-slot');
+        if (slots.length <= 1) {
+            const inp = slot.querySelector('input');
+            if (inp) inp.value = '';
+        } else {
+            slot.remove();
+        }
+        syncGroupSessionsFromDates();
+        schedulePersist();
+    });
+
+    addParentMeetingBtn.addEventListener('click', () => {
+        addParentMeetingRow({});
+        schedulePersist();
+    });
+    addLanguageEvalBtn.addEventListener('click', () => {
+        addLanguageEvalRow({ total: 500, therapist: 305 });
+        schedulePersist();
+    });
+    addDiagnosticBtn.addEventListener('click', () => {
+        addDiagnosticRow({ therapist: 900 });
+        schedulePersist();
+    });
+    addGroupAssessmentBtn.addEventListener('click', () => {
+        addGroupAssessmentRow({ price: 150 });
+        schedulePersist();
+    });
+    addCourseExpenseBtn.addEventListener('click', () => {
+        addCourseExpenseRow({});
+        schedulePersist();
+    });
+
+    if (!periodInput.value) periodInput.value = defaultPeriodValue();
+    renderGroupDates(['']);
+    toggleGroupVisibility();
+
+    document.getElementById('saveNow').addEventListener('click', () => {
+        calculate();
+        persist();
+        saveHint.textContent = 'נשמר';
+        saveHint.classList.add('saved');
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+            saveHint.textContent = '';
+            saveHint.classList.remove('saved');
+        }, 2500);
+    });
+
+    document.getElementById('exportExcel').addEventListener('click', exportExcel);
+    document.getElementById('exportWord').addEventListener('click', exportWord);
+    document.getElementById('exportPdf').addEventListener('click', () => {
+        calculate();
+        window.print();
+    });
+    document.getElementById('exportJson').addEventListener('click', exportJsonBackup);
+    document.getElementById('newMonthFromTemplateBtn').addEventListener('click', createNextMonthReportFromTemplate);
+
+    const importInput = document.getElementById('importJsonFile');
+    document.getElementById('importJsonBtn').addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', () => {
+        const file = importInput.files && importInput.files[0];
+        importInput.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(String(reader.result));
+                importFromJsonObject(data);
+                saveHint.textContent = 'ייבוא הושלם';
+                saveHint.classList.add('saved');
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(() => {
+                    saveHint.textContent = '';
+                    saveHint.classList.remove('saved');
+                }, 2500);
+            } catch (err) {
+                alert(err.message || 'לא ניתן לקרוא את הקובץ');
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    const importNamesInput = document.getElementById('importNamesJsonFile');
+    document.getElementById('importNamesJsonBtn').addEventListener('click', () => importNamesInput.click());
+    importNamesInput.addEventListener('change', () => {
+        const file = importNamesInput.files && importNamesInput.files[0];
+        importNamesInput.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(String(reader.result));
+                importPatientNamesFromJsonObject(data);
+                saveHint.textContent = 'שמות מטופלים יובאו בהצלחה';
+                saveHint.classList.add('saved');
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(() => {
+                    saveHint.textContent = '';
+                    saveHint.classList.remove('saved');
+                }, 2500);
+            } catch (err) {
+                alert(err.message || 'לא ניתן לקרוא את הקובץ');
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    load();
+    periodInput.addEventListener('change', () => {
+        if (currentPeriod && currentPeriod !== periodInput.value) {
+            // Save current report before moving month.
+            const snapshot = collectState();
+            snapshot.period = currentPeriod;
+            const store = readStore();
+            store.reportsByPeriod[currentPeriod] = snapshot;
+            store.patientTemplate = extractTemplateNames(snapshot.rows);
+            writeStore(store);
+        }
+        load();
+    });
+})();
+</script>
+</body>
+</html>
