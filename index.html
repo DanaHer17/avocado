@@ -478,7 +478,7 @@
         <h2 style="font-size:1rem;margin:0 0 0.75rem;">ייצוא לקובץ</h2>
         <div class="export-bar">
             <button type="button" class="btn btn-export" id="exportExcel">הורדה כ-Excel (.xlsx)</button>
-            <button type="button" class="btn btn-export" id="exportWord">הורדה כ-Word (.doc)</button>
+            <button type="button" class="btn btn-export" id="exportWord">הורדה כ-Word (.docx)</button>
             <button type="button" class="btn btn-export" id="exportPdf">PDF (הדפסה / שמירה כ-PDF)</button>
             <button type="button" class="btn btn-export" id="exportJson">גיבוי JSON</button>
             <button type="button" class="btn btn-export" id="importJsonBtn">ייבוא מקובץ JSON</button>
@@ -495,6 +495,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
 <script>
 (function () {
     const STORAGE_KEY = 'avocado-treatment-report-v1';
@@ -1104,6 +1105,14 @@
             `${sum.group.enabled ? `<strong>תעריף קבוצה:</strong> ${sum.group.rate} ₪ &nbsp;|&nbsp; <strong>ילדים:</strong> ${sum.group.children} &nbsp;|&nbsp; <strong>מפגשים:</strong> ${sum.group.sessions}<br><strong>נוסחה:</strong> תעריף × מפגשים (ללא כפל ילדים)<br><strong>תאריכי קבוצה:</strong> ${escapeHtml((sum.group.dates || []).filter(Boolean).join(', '))}<br><strong>סה״כ קבוצה:</strong> ${sum.groupTotal} ₪<br>` : ''}` +
             `<strong>סה״כ למטפלת:</strong> ${sum.grandTotal} ₪</p>` +
             '</body></html>';
+        if (typeof htmlDocx !== 'undefined' && typeof htmlDocx.asBlob === 'function') {
+            const docxBlob = htmlDocx.asBlob(html, {
+                orientation: 'portrait',
+                margins: { top: 720, right: 720, bottom: 720, left: 720 }
+            });
+            downloadBlob(`treatment-report-${stampFilename()}.docx`, docxBlob);
+            return;
+        }
         const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
         downloadBlob(`treatment-report-${stampFilename()}.doc`, blob);
     }
