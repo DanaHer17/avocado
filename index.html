@@ -400,11 +400,15 @@
             <dd id="diagnosticsTotal">0</dd>
             <dt>מפגשי הערכה לילדי קבוצה</dt>
             <dd id="groupAssessmentsTotal">0</dd>
+            <dt>תפקידים נוספים (למטפלת)</dt>
+            <dd id="extraRolesTotal">0</dd>
+            <dt>הוצאות נוספות (החזר למטפלת)</dt>
+            <dd id="additionalExpensesTotal">0</dd>
             <dt>הוצאות קורסים (יורד מהמטפלת)</dt>
             <dd id="courseExpensesTotal">0</dd>
             <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
             <dd id="grossIndividualTotal">0</dd>
-            <dt>חלק המרכז (פרטני בלבד)</dt>
+            <dt>חלק המרכז (לאחר התאמות)</dt>
             <dd id="centerTotal">0</dd>
         </dl>
         <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
@@ -414,61 +418,119 @@
         <h2 style="font-size:1rem;margin:0 0 0.75rem;">רכיבים אופציונליים לשכר</h2>
         <div class="extras-grid">
             <div class="extra-box">
-                <h3>פגישות הורים (ילדי קבוצה)</h3>
-                <table class="mini-table">
-                    <thead><tr><th>שם ילד</th><th>תאריך</th><th></th></tr></thead>
-                    <tbody id="parentMeetingsBody"></tbody>
-                </table>
-                <div class="mini-toolbar">
-                    <button type="button" class="btn-mini" id="addParentMeeting">+ פגישת הורים</button>
-                    <span class="mini-note">כל פגישה = שכר בסיס למטפלת (כולל בונוס ישיבה אם קיים).</span>
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="parentMeetingsEnabled" />
+                    <label for="parentMeetingsEnabled">פגישות הורים (ילדי קבוצה)</label>
+                </div>
+                <div id="parentMeetingsFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם ילד</th><th>תאריך</th><th></th></tr></thead>
+                        <tbody id="parentMeetingsBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addParentMeeting">+ פגישת הורים</button>
+                        <span class="mini-note">כל פגישה = שכר בסיס למטפלת (כולל בונוס ישיבה אם קיים).</span>
+                    </div>
                 </div>
             </div>
 
             <div class="extra-box">
-                <h3>הערכות שפה</h3>
-                <table class="mini-table">
-                    <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר הערכה</th><th>למטפלת</th><th></th></tr></thead>
-                    <tbody id="languageEvalBody"></tbody>
-                </table>
-                <div class="mini-toolbar">
-                    <button type="button" class="btn-mini" id="addLanguageEval">+ הערכת שפה</button>
-                    <span class="mini-note">ברירת מחדל: 500 סה״כ, 305 למטפלת.</span>
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="languageEvaluationsEnabled" />
+                    <label for="languageEvaluationsEnabled">הערכות שפה</label>
+                </div>
+                <div id="languageEvaluationsFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר הערכה</th><th>למטפלת</th><th></th></tr></thead>
+                        <tbody id="languageEvalBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addLanguageEval">+ הערכת שפה</button>
+                        <span class="mini-note">ברירת מחדל: 500 סה״כ, 305 למטפלת.</span>
+                    </div>
                 </div>
             </div>
 
             <div class="extra-box">
-                <h3>אבחונים</h3>
-                <table class="mini-table">
-                    <thead><tr><th>שם ילד</th><th>תאריך</th><th>למטפלת</th><th></th></tr></thead>
-                    <tbody id="diagnosticsBody"></tbody>
-                </table>
-                <div class="mini-toolbar">
-                    <button type="button" class="btn-mini" id="addDiagnostic">+ אבחון</button>
-                    <span class="mini-note">ברירת מחדל: 900 למטפלת לכל אבחון.</span>
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="diagnosticsEnabled" />
+                    <label for="diagnosticsEnabled">אבחונים</label>
+                </div>
+                <div id="diagnosticsFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>למטפלת</th><th></th></tr></thead>
+                        <tbody id="diagnosticsBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addDiagnostic">+ אבחון</button>
+                        <span class="mini-note">ברירת מחדל: 900 למטפלת לכל אבחון.</span>
+                    </div>
                 </div>
             </div>
 
             <div class="extra-box">
-                <h3>מפגשי הערכה לילדי קבוצה</h3>
-                <table class="mini-table">
-                    <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר</th><th></th></tr></thead>
-                    <tbody id="groupAssessmentsBody"></tbody>
-                </table>
-                <div class="mini-toolbar">
-                    <button type="button" class="btn-mini" id="addGroupAssessment">+ מפגש הערכה</button>
-                    <span class="mini-note">ברירת מחדל: 150 למפגש.</span>
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="groupAssessmentsEnabled" />
+                    <label for="groupAssessmentsEnabled">מפגשי הערכה לילדי קבוצה</label>
+                </div>
+                <div id="groupAssessmentsFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר</th><th></th></tr></thead>
+                        <tbody id="groupAssessmentsBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addGroupAssessment">+ מפגש הערכה</button>
+                        <span class="mini-note">ברירת מחדל: 150 למפגש.</span>
+                    </div>
                 </div>
             </div>
 
             <div class="extra-box">
-                <h3>הוצאות קורסים (יורד מהמטפלת)</h3>
-                <table class="mini-table">
-                    <thead><tr><th>שם קורס</th><th>עלות</th><th></th></tr></thead>
-                    <tbody id="courseExpensesBody"></tbody>
-                </table>
-                <div class="mini-toolbar">
-                    <button type="button" class="btn-mini" id="addCourseExpense">+ קורס</button>
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="courseExpensesEnabled" />
+                    <label for="courseExpensesEnabled">הוצאות קורסים (יורד מהמטפלת)</label>
+                </div>
+                <div id="courseExpensesFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם קורס</th><th>עלות</th><th></th></tr></thead>
+                        <tbody id="courseExpensesBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addCourseExpense">+ קורס</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="extraRoleEnabled" />
+                    <label for="extraRoleEnabled">האם יש תפקיד נוסף?</label>
+                </div>
+                <div id="extraRoleFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם תפקיד</th><th>סכום למטפלת</th><th></th></tr></thead>
+                        <tbody id="extraRolesBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addExtraRole">+ תפקיד נוסף</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="additionalExpensesEnabled" />
+                    <label for="additionalExpensesEnabled">הוצאות נוספות</label>
+                </div>
+                <div id="additionalExpensesFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם הוצאה</th><th>עלות ההוצאה</th><th></th></tr></thead>
+                        <tbody id="additionalExpensesBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addAdditionalExpense">+ הוצאה נוספת</button>
+                        <span class="mini-note">החזר זה מתווסף לסכום שהמרכז חייב למטפלת.</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -511,16 +573,34 @@
     const groupSessionsInput = document.getElementById('groupSessions');
     const groupDateList = document.getElementById('groupDateList');
     const addGroupDateBtn = document.getElementById('addGroupDateBtn');
+    const parentMeetingsEnabledInput = document.getElementById('parentMeetingsEnabled');
+    const parentMeetingsFields = document.getElementById('parentMeetingsFields');
     const parentMeetingsBody = document.getElementById('parentMeetingsBody');
+    const languageEvaluationsEnabledInput = document.getElementById('languageEvaluationsEnabled');
+    const languageEvaluationsFields = document.getElementById('languageEvaluationsFields');
     const languageEvalBody = document.getElementById('languageEvalBody');
+    const diagnosticsEnabledInput = document.getElementById('diagnosticsEnabled');
+    const diagnosticsFields = document.getElementById('diagnosticsFields');
     const diagnosticsBody = document.getElementById('diagnosticsBody');
+    const groupAssessmentsEnabledInput = document.getElementById('groupAssessmentsEnabled');
+    const groupAssessmentsFields = document.getElementById('groupAssessmentsFields');
     const groupAssessmentsBody = document.getElementById('groupAssessmentsBody');
+    const courseExpensesEnabledInput = document.getElementById('courseExpensesEnabled');
+    const courseExpensesFields = document.getElementById('courseExpensesFields');
     const courseExpensesBody = document.getElementById('courseExpensesBody');
+    const extraRoleEnabledInput = document.getElementById('extraRoleEnabled');
+    const extraRoleFields = document.getElementById('extraRoleFields');
+    const extraRolesBody = document.getElementById('extraRolesBody');
+    const additionalExpensesEnabledInput = document.getElementById('additionalExpensesEnabled');
+    const additionalExpensesFields = document.getElementById('additionalExpensesFields');
+    const additionalExpensesBody = document.getElementById('additionalExpensesBody');
     const addParentMeetingBtn = document.getElementById('addParentMeeting');
     const addLanguageEvalBtn = document.getElementById('addLanguageEval');
     const addDiagnosticBtn = document.getElementById('addDiagnostic');
     const addGroupAssessmentBtn = document.getElementById('addGroupAssessment');
     const addCourseExpenseBtn = document.getElementById('addCourseExpense');
+    const addExtraRoleBtn = document.getElementById('addExtraRole');
+    const addAdditionalExpenseBtn = document.getElementById('addAdditionalExpense');
     let currentPeriod = '';
     let saveTimer = null;
 
@@ -599,6 +679,42 @@
         }
     }
 
+    function toggleExtraRoleVisibility() {
+        if (extraRoleEnabledInput.checked) {
+            extraRoleFields.classList.remove('is-hidden');
+        } else {
+            extraRoleFields.classList.add('is-hidden');
+        }
+    }
+
+    function toggleAdditionalExpensesVisibility() {
+        if (additionalExpensesEnabledInput.checked) {
+            additionalExpensesFields.classList.remove('is-hidden');
+        } else {
+            additionalExpensesFields.classList.add('is-hidden');
+        }
+    }
+
+    function toggleParentMeetingsVisibility() {
+        parentMeetingsFields.classList.toggle('is-hidden', !parentMeetingsEnabledInput.checked);
+    }
+
+    function toggleLanguageEvaluationsVisibility() {
+        languageEvaluationsFields.classList.toggle('is-hidden', !languageEvaluationsEnabledInput.checked);
+    }
+
+    function toggleDiagnosticsVisibility() {
+        diagnosticsFields.classList.toggle('is-hidden', !diagnosticsEnabledInput.checked);
+    }
+
+    function toggleGroupAssessmentsVisibility() {
+        groupAssessmentsFields.classList.toggle('is-hidden', !groupAssessmentsEnabledInput.checked);
+    }
+
+    function toggleCourseExpensesVisibility() {
+        courseExpensesFields.classList.toggle('is-hidden', !courseExpensesEnabledInput.checked);
+    }
+
     function toAmount(value, fallback) {
         const n = parseFloat(value);
         if (Number.isNaN(n)) return fallback || 0;
@@ -673,6 +789,26 @@
         wireMiniRowInputs(tr);
     }
 
+    function addExtraRoleRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="er-name" value="${escapeAttr(d.role)}" placeholder="שם תפקיד" /></td>
+            <td><input type="number" min="0" step="1" class="er-amount" value="${toAmount(d.amount, 0)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        extraRolesBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
+    function addAdditionalExpenseRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="ae-name" value="${escapeAttr(d.name)}" placeholder="שם הוצאה" /></td>
+            <td><input type="number" min="0" step="1" class="ae-amount" value="${toAmount(d.amount, 0)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        additionalExpensesBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
     function collectExtrasState() {
         const parentMeetings = Array.from(parentMeetingsBody.querySelectorAll('tr')).map((tr) => ({
             child: tr.querySelector('.pm-child')?.value.trim() || '',
@@ -698,7 +834,30 @@
             course: tr.querySelector('.ce-name')?.value.trim() || '',
             cost: toAmount(tr.querySelector('.ce-cost')?.value, 0)
         }));
-        return { parentMeetings, languageEvaluations, diagnostics, groupAssessments, courseExpenses };
+        const extraRoles = Array.from(extraRolesBody.querySelectorAll('tr')).map((tr) => ({
+            role: tr.querySelector('.er-name')?.value.trim() || '',
+            amount: toAmount(tr.querySelector('.er-amount')?.value, 0)
+        }));
+        const additionalExpenses = Array.from(additionalExpensesBody.querySelectorAll('tr')).map((tr) => ({
+            name: tr.querySelector('.ae-name')?.value.trim() || '',
+            amount: toAmount(tr.querySelector('.ae-amount')?.value, 0)
+        }));
+        return {
+            parentMeetings,
+            languageEvaluations,
+            diagnostics,
+            groupAssessments,
+            courseExpenses,
+            parentMeetingsEnabled: !!parentMeetingsEnabledInput.checked,
+            languageEvaluationsEnabled: !!languageEvaluationsEnabledInput.checked,
+            diagnosticsEnabled: !!diagnosticsEnabledInput.checked,
+            groupAssessmentsEnabled: !!groupAssessmentsEnabledInput.checked,
+            courseExpensesEnabled: !!courseExpensesEnabledInput.checked,
+            extraRoleEnabled: !!extraRoleEnabledInput.checked,
+            extraRoles,
+            additionalExpensesEnabled: !!additionalExpensesEnabledInput.checked,
+            additionalExpenses
+        };
     }
 
     function applyExtrasState(extras) {
@@ -708,18 +867,38 @@
         diagnosticsBody.innerHTML = '';
         groupAssessmentsBody.innerHTML = '';
         courseExpensesBody.innerHTML = '';
+        extraRolesBody.innerHTML = '';
+        additionalExpensesBody.innerHTML = '';
 
         const p = Array.isArray(e.parentMeetings) ? e.parentMeetings : [];
         const l = Array.isArray(e.languageEvaluations) ? e.languageEvaluations : [];
         const d = Array.isArray(e.diagnostics) ? e.diagnostics : [];
         const g = Array.isArray(e.groupAssessments) ? e.groupAssessments : [];
         const c = Array.isArray(e.courseExpenses) ? e.courseExpenses : [];
+        const er = Array.isArray(e.extraRoles) ? e.extraRoles : [];
+        const ae = Array.isArray(e.additionalExpenses) ? e.additionalExpenses : [];
+        parentMeetingsEnabledInput.checked = e.parentMeetingsEnabled != null ? !!e.parentMeetingsEnabled : p.length > 0;
+        languageEvaluationsEnabledInput.checked = e.languageEvaluationsEnabled != null ? !!e.languageEvaluationsEnabled : l.length > 0;
+        diagnosticsEnabledInput.checked = e.diagnosticsEnabled != null ? !!e.diagnosticsEnabled : d.length > 0;
+        groupAssessmentsEnabledInput.checked = e.groupAssessmentsEnabled != null ? !!e.groupAssessmentsEnabled : g.length > 0;
+        courseExpensesEnabledInput.checked = e.courseExpensesEnabled != null ? !!e.courseExpensesEnabled : c.length > 0;
+        extraRoleEnabledInput.checked = e.extraRoleEnabled != null ? !!e.extraRoleEnabled : er.length > 0;
+        additionalExpensesEnabledInput.checked = e.additionalExpensesEnabled != null ? !!e.additionalExpensesEnabled : ae.length > 0;
+        toggleParentMeetingsVisibility();
+        toggleLanguageEvaluationsVisibility();
+        toggleDiagnosticsVisibility();
+        toggleGroupAssessmentsVisibility();
+        toggleCourseExpensesVisibility();
+        toggleExtraRoleVisibility();
+        toggleAdditionalExpensesVisibility();
 
         p.forEach(addParentMeetingRow);
         l.forEach(addLanguageEvalRow);
         d.forEach(addDiagnosticRow);
         g.forEach(addGroupAssessmentRow);
         c.forEach(addCourseExpenseRow);
+        er.forEach(addExtraRoleRow);
+        ae.forEach(addAdditionalExpenseRow);
     }
 
     function wireDateRow(tr) {
@@ -853,6 +1032,15 @@
             languageEvaluations: [],
             diagnostics: [],
             groupAssessments: [],
+            parentMeetingsEnabled: false,
+            languageEvaluationsEnabled: false,
+            diagnosticsEnabled: false,
+            groupAssessmentsEnabled: false,
+            courseExpensesEnabled: false,
+            extraRoleEnabled: false,
+            extraRoles: [],
+            additionalExpensesEnabled: false,
+            additionalExpenses: [],
             courseExpenses: []
         };
     }
@@ -915,21 +1103,34 @@
         const g = collectGroupState();
         const extras = collectExtrasState();
         const groupTotal = g.enabled ? (g.rate * g.sessions) : 0;
-        const parentMeetingsCount = extras.parentMeetings.filter((x) => x.child || x.date).length;
+        const parentMeetingsCount = extras.parentMeetingsEnabled
+            ? extras.parentMeetings.filter((x) => x.child || x.date).length
+            : 0;
         const parentMeetingsTotal = parentMeetingsCount * rate;
-        const languageEvalTherapistTotal = extras.languageEvaluations
-            .reduce((sum, x) => sum + toAmount(x.therapist, 305), 0);
-        const languageEvalCenterTotal = extras.languageEvaluations
-            .reduce((sum, x) => sum + Math.max(0, toAmount(x.total, 500) - toAmount(x.therapist, 305)), 0);
-        const diagnosticsTotal = extras.diagnostics
-            .reduce((sum, x) => sum + toAmount(x.therapist, 900), 0);
-        const groupAssessmentsTotal = extras.groupAssessments
-            .reduce((sum, x) => sum + toAmount(x.price, 150), 0);
-        const courseExpensesTotal = extras.courseExpenses
-            .reduce((sum, x) => sum + toAmount(x.cost, 0), 0);
+        const languageEvalTherapistTotal = extras.languageEvaluationsEnabled
+            ? extras.languageEvaluations.reduce((sum, x) => sum + toAmount(x.therapist, 305), 0)
+            : 0;
+        const languageEvalCenterTotal = extras.languageEvaluationsEnabled
+            ? extras.languageEvaluations.reduce((sum, x) => sum + Math.max(0, toAmount(x.total, 500) - toAmount(x.therapist, 305)), 0)
+            : 0;
+        const diagnosticsTotal = extras.diagnosticsEnabled
+            ? extras.diagnostics.reduce((sum, x) => sum + toAmount(x.therapist, 900), 0)
+            : 0;
+        const groupAssessmentsTotal = extras.groupAssessmentsEnabled
+            ? extras.groupAssessments.reduce((sum, x) => sum + toAmount(x.price, 150), 0)
+            : 0;
+        const extraRolesTotal = extras.extraRoleEnabled
+            ? extras.extraRoles.reduce((sum, x) => sum + toAmount(x.amount, 0), 0)
+            : 0;
+        const additionalExpensesTotal = extras.additionalExpensesEnabled
+            ? extras.additionalExpenses.reduce((sum, x) => sum + toAmount(x.amount, 0), 0)
+            : 0;
+        const courseExpensesTotal = extras.courseExpensesEnabled
+            ? extras.courseExpenses.reduce((sum, x) => sum + toAmount(x.cost, 0), 0)
+            : 0;
         const grossIndividualTotal = totalBillable * clientRate;
-        const centerTotal = Math.max(0, grossIndividualTotal - individualTotal) + languageEvalCenterTotal + courseExpensesTotal;
-        const grandTotal = individualTotal + groupTotal + parentMeetingsTotal + languageEvalTherapistTotal + diagnosticsTotal + groupAssessmentsTotal - courseExpensesTotal;
+        const centerTotal = Math.max(0, grossIndividualTotal - individualTotal) + languageEvalCenterTotal + courseExpensesTotal - additionalExpensesTotal;
+        const grandTotal = individualTotal + groupTotal + parentMeetingsTotal + languageEvalTherapistTotal + diagnosticsTotal + groupAssessmentsTotal + extraRolesTotal + additionalExpensesTotal - courseExpensesTotal;
         return {
             rate,
             clientRate,
@@ -942,6 +1143,8 @@
             languageEvalCenterTotal,
             diagnosticsTotal,
             groupAssessmentsTotal,
+            extraRolesTotal,
+            additionalExpensesTotal,
             courseExpensesTotal,
             grossIndividualTotal,
             centerTotal,
@@ -1010,6 +1213,8 @@
         aoa.push(['הערכות שפה למרכז (₪)', sum.languageEvalCenterTotal]);
         aoa.push(['אבחונים למטפלת (₪)', sum.diagnosticsTotal]);
         aoa.push(['מפגשי הערכה לילדי קבוצה (₪)', sum.groupAssessmentsTotal]);
+        aoa.push(['תפקידים נוספים למטפלת (₪)', sum.extraRolesTotal]);
+        aoa.push(['הוצאות נוספות (₪)', sum.additionalExpensesTotal]);
         aoa.push(['הוצאות קורסים (₪)', sum.courseExpensesTotal]);
         aoa.push(['מדריכת קבוצה?', sum.group.enabled ? 'כן' : 'לא']);
         aoa.push(['תעריף קבוצה', sum.group.rate, 'ילדים בקבוצה (לתיעוד)', sum.group.children, 'מפגשי קבוצה', sum.group.sessions]);
@@ -1018,7 +1223,7 @@
         aoa.push(['סה״כ קבוצה (₪)', sum.groupTotal]);
         aoa.push(['סה״כ למטפלת (₪)', sum.grandTotal]);
 
-        if (sum.extras.parentMeetings.length) {
+        if (sum.extras.parentMeetingsEnabled && sum.extras.parentMeetings.length) {
             aoa.push([]);
             aoa.push(['פגישות הורים']);
             aoa.push(['שם ילד', 'תאריך', 'שכר למטפלת']);
@@ -1027,7 +1232,7 @@
                 aoa.push([x.child, x.date, sum.rate]);
             });
         }
-        if (sum.extras.languageEvaluations.length) {
+        if (sum.extras.languageEvaluationsEnabled && sum.extras.languageEvaluations.length) {
             aoa.push([]);
             aoa.push(['הערכות שפה']);
             aoa.push(['שם ילד', 'תאריך', 'מחיר הערכה', 'למטפלת', 'למרכז']);
@@ -1035,7 +1240,7 @@
                 aoa.push([x.child, x.date, x.total, x.therapist, Math.max(0, x.total - x.therapist)]);
             });
         }
-        if (sum.extras.diagnostics.length) {
+        if (sum.extras.diagnosticsEnabled && sum.extras.diagnostics.length) {
             aoa.push([]);
             aoa.push(['אבחונים']);
             aoa.push(['שם ילד', 'תאריך', 'למטפלת']);
@@ -1043,7 +1248,7 @@
                 aoa.push([x.child, x.date, x.therapist]);
             });
         }
-        if (sum.extras.groupAssessments.length) {
+        if (sum.extras.groupAssessmentsEnabled && sum.extras.groupAssessments.length) {
             aoa.push([]);
             aoa.push(['מפגשי הערכה לילדי קבוצה']);
             aoa.push(['שם ילד', 'תאריך', 'מחיר']);
@@ -1051,12 +1256,28 @@
                 aoa.push([x.child, x.date, x.price]);
             });
         }
-        if (sum.extras.courseExpenses.length) {
+        if (sum.extras.courseExpensesEnabled && sum.extras.courseExpenses.length) {
             aoa.push([]);
             aoa.push(['הוצאות קורסים']);
             aoa.push(['שם קורס', 'עלות']);
             sum.extras.courseExpenses.forEach((x) => {
                 aoa.push([x.course, x.cost]);
+            });
+        }
+        if (sum.extras.extraRoleEnabled && sum.extras.extraRoles.length) {
+            aoa.push([]);
+            aoa.push(['תפקידים נוספים']);
+            aoa.push(['שם תפקיד', 'סכום']);
+            sum.extras.extraRoles.forEach((x) => {
+                aoa.push([x.role, x.amount]);
+            });
+        }
+        if (sum.extras.additionalExpensesEnabled && sum.extras.additionalExpenses.length) {
+            aoa.push([]);
+            aoa.push(['הוצאות נוספות']);
+            aoa.push(['שם הוצאה', 'עלות ההוצאה']);
+            sum.extras.additionalExpenses.forEach((x) => {
+                aoa.push([x.name, x.amount]);
             });
         }
 
@@ -1099,6 +1320,8 @@
             `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
             `<strong>מפגשי הערכה לילדי קבוצה:</strong> ${sum.groupAssessmentsTotal} ₪<br>` +
+            `<strong>תפקידים נוספים למטפלת:</strong> ${sum.extraRolesTotal} ₪<br>` +
+            `<strong>הוצאות נוספות (החזר למטפלת):</strong> ${sum.additionalExpensesTotal} ₪<br>` +
             `<strong>הוצאות קורסים (יורד מהמטפלת):</strong> ${sum.courseExpensesTotal} ₪<br>` +
             `<strong>קבוצה:</strong> ${sum.group.enabled ? 'כן' : 'לא'}<br>` +
             `${sum.group.enabled ? `<strong>תעריף קבוצה:</strong> ${sum.group.rate} ₪ &nbsp;|&nbsp; <strong>ילדים:</strong> ${sum.group.children} &nbsp;|&nbsp; <strong>מפגשים:</strong> ${sum.group.sessions}<br><strong>נוסחה:</strong> תעריף × מפגשים (ללא כפל ילדים)<br><strong>תאריכי קבוצה:</strong> ${escapeHtml((sum.group.dates || []).filter(Boolean).join(', '))}<br><strong>סה״כ קבוצה:</strong> ${sum.groupTotal} ₪<br>` : ''}` +
@@ -1362,6 +1585,8 @@
         document.getElementById('languageEvalCenterTotal').textContent = sum.languageEvalCenterTotal.toLocaleString('he-IL');
         document.getElementById('diagnosticsTotal').textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
         document.getElementById('groupAssessmentsTotal').textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
+        document.getElementById('extraRolesTotal').textContent = sum.extraRolesTotal.toLocaleString('he-IL');
+        document.getElementById('additionalExpensesTotal').textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
         document.getElementById('courseExpensesTotal').textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
         document.getElementById('grossIndividualTotal').textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
         document.getElementById('centerTotal').textContent = sum.centerTotal.toLocaleString('he-IL');
@@ -1458,23 +1683,88 @@
         schedulePersist();
     });
 
+    parentMeetingsEnabledInput.addEventListener('change', () => {
+        toggleParentMeetingsVisibility();
+        schedulePersist();
+    });
+    languageEvaluationsEnabledInput.addEventListener('change', () => {
+        toggleLanguageEvaluationsVisibility();
+        schedulePersist();
+    });
+    diagnosticsEnabledInput.addEventListener('change', () => {
+        toggleDiagnosticsVisibility();
+        schedulePersist();
+    });
+    groupAssessmentsEnabledInput.addEventListener('change', () => {
+        toggleGroupAssessmentsVisibility();
+        schedulePersist();
+    });
+    courseExpensesEnabledInput.addEventListener('change', () => {
+        toggleCourseExpensesVisibility();
+        schedulePersist();
+    });
+
     addParentMeetingBtn.addEventListener('click', () => {
+        if (!parentMeetingsEnabledInput.checked) {
+            parentMeetingsEnabledInput.checked = true;
+            toggleParentMeetingsVisibility();
+        }
         addParentMeetingRow({});
         schedulePersist();
     });
     addLanguageEvalBtn.addEventListener('click', () => {
+        if (!languageEvaluationsEnabledInput.checked) {
+            languageEvaluationsEnabledInput.checked = true;
+            toggleLanguageEvaluationsVisibility();
+        }
         addLanguageEvalRow({ total: 500, therapist: 305 });
         schedulePersist();
     });
     addDiagnosticBtn.addEventListener('click', () => {
+        if (!diagnosticsEnabledInput.checked) {
+            diagnosticsEnabledInput.checked = true;
+            toggleDiagnosticsVisibility();
+        }
         addDiagnosticRow({ therapist: 900 });
         schedulePersist();
     });
     addGroupAssessmentBtn.addEventListener('click', () => {
+        if (!groupAssessmentsEnabledInput.checked) {
+            groupAssessmentsEnabledInput.checked = true;
+            toggleGroupAssessmentsVisibility();
+        }
         addGroupAssessmentRow({ price: 150 });
         schedulePersist();
     });
+    extraRoleEnabledInput.addEventListener('change', () => {
+        toggleExtraRoleVisibility();
+        schedulePersist();
+    });
+    addExtraRoleBtn.addEventListener('click', () => {
+        addExtraRoleRow({});
+        if (!extraRoleEnabledInput.checked) {
+            extraRoleEnabledInput.checked = true;
+            toggleExtraRoleVisibility();
+        }
+        schedulePersist();
+    });
+    additionalExpensesEnabledInput.addEventListener('change', () => {
+        toggleAdditionalExpensesVisibility();
+        schedulePersist();
+    });
+    addAdditionalExpenseBtn.addEventListener('click', () => {
+        addAdditionalExpenseRow({});
+        if (!additionalExpensesEnabledInput.checked) {
+            additionalExpensesEnabledInput.checked = true;
+            toggleAdditionalExpensesVisibility();
+        }
+        schedulePersist();
+    });
     addCourseExpenseBtn.addEventListener('click', () => {
+        if (!courseExpensesEnabledInput.checked) {
+            courseExpensesEnabledInput.checked = true;
+            toggleCourseExpensesVisibility();
+        }
         addCourseExpenseRow({});
         schedulePersist();
     });
@@ -1482,6 +1772,13 @@
     if (!periodInput.value) periodInput.value = defaultPeriodValue();
     renderGroupDates(['']);
     toggleGroupVisibility();
+    toggleParentMeetingsVisibility();
+    toggleLanguageEvaluationsVisibility();
+    toggleDiagnosticsVisibility();
+    toggleGroupAssessmentsVisibility();
+    toggleCourseExpensesVisibility();
+    toggleExtraRoleVisibility();
+    toggleAdditionalExpensesVisibility();
 
     document.getElementById('saveNow').addEventListener('click', () => {
         calculate();
