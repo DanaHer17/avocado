@@ -202,6 +202,17 @@
             font-weight: 600;
         }
         .btn-mini:hover { border-color: var(--accent); background: #f0fdfa; }
+        .btn-mini-alt {
+            font-size: 0.72rem;
+            padding: 0.28rem 0.45rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-mini-alt:hover { background: #eef2f7; color: var(--text); }
         .group-fields {
             margin-top: 0.85rem;
             padding-top: 0.75rem;
@@ -253,6 +264,15 @@
         }
         .summary dt { color: rgba(236,253,245,.75); }
         .summary dd { margin: 0; font-weight: 600; }
+        .summary dl > .summary-settlement-block {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.35rem 1rem;
+            margin-top: 0.65rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,.2);
+        }
         .grand {
             margin-top: 1rem;
             padding-top: 1rem;
@@ -282,6 +302,40 @@
             margin: 0.75rem 0 0;
             line-height: 1.45;
         }
+        #bulkDateDialog {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0;
+            width: min(520px, 92vw);
+        }
+        #bulkDateDialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+        .bulk-wrap { padding: 1rem; }
+        .bulk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; gap: 0.5rem; }
+        .bulk-title { margin: 0; font-size: 0.95rem; }
+        .bulk-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 0.35rem;
+            margin: 0.6rem 0 0.75rem;
+        }
+        .bulk-day {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.35rem 0.2rem;
+            text-align: center;
+            font-size: 0.78rem;
+            cursor: pointer;
+            user-select: none;
+            background: #fff;
+        }
+        .bulk-day input { display: none; }
+        .bulk-day.active {
+            background: #e6fffa;
+            border-color: var(--accent);
+            color: var(--accent-dark);
+            font-weight: 700;
+        }
+        .bulk-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
         @media print {
             body { background: #fff; padding: 0.5cm; }
             .no-print { display: none !important; }
@@ -368,6 +422,8 @@
                         <th>מפגשים <span style="font-weight:400;font-size:0.75rem">(אוטו׳)</span></th>
                         <th>ביטול בתשלום</th>
                         <th>ביטול ללא תשלום</th>
+                        <th>שולם למרכז</th>
+                        <th>שולם למטפלת</th>
                         <th>סה״כ שורה</th>
                         <th></th>
                     </tr>
@@ -406,12 +462,25 @@
             <dd id="additionalExpensesTotal">0</dd>
             <dt>הוצאות קורסים (יורד מהמטפלת)</dt>
             <dd id="courseExpensesTotal">0</dd>
-            <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
-            <dd id="grossIndividualTotal">0</dd>
-            <dt>חלק המרכז (לאחר התאמות)</dt>
-            <dd id="centerTotal">0</dd>
+            <div class="summary-settlement-block">
+                <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
+                <dd id="grossIndividualTotal">0</dd>
+                <dt>חלק המרכז (לאחר התאמות)</dt>
+                <dd id="centerTotal">0</dd>
+                <dt>שולם למרכז (מטופלים שסומנו)</dt>
+                <dd id="paidToCenterTotal">0</dd>
+                <dt>שולם למטפלת (מטופלים שסומנו)</dt>
+                <dd id="paidToTherapistTotal">0</dd>
+                <dt>יתרה למרכז (כמה אני חייבת למרכז)</dt>
+                <dd id="remainingToCenter">0</dd>
+                <dt>יתרה למטפלת (כמה המרכז חייב לי)</dt>
+                <dd id="remainingToTherapist">0</dd>
+            </div>
         </dl>
         <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
+        <div class="grand" style="font-size:1rem;color:#e2e8f0;">
+            נטו אחרי קיזוז: <span id="netSettlementText">אין יתרה</span>
+        </div>
     </div>
 
     <div class="card">
@@ -556,6 +625,20 @@
     </div>
 </div>
 
+<dialog id="bulkDateDialog">
+    <div class="bulk-wrap">
+        <div class="bulk-head">
+            <h3 class="bulk-title" id="bulkDateTitle">בחירת תאריכי מפגשים</h3>
+            <button type="button" class="btn-mini-alt" id="bulkClearBtn">ניקוי הכל</button>
+        </div>
+        <div class="bulk-grid" id="bulkDateGrid"></div>
+        <div class="bulk-actions">
+            <button type="button" class="btn btn-ghost" id="bulkCancelBtn">ביטול</button>
+            <button type="button" class="btn btn-primary" id="bulkSaveBtn">שמירה</button>
+        </div>
+    </div>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 (function () {
@@ -573,6 +656,12 @@
     const groupSessionsInput = document.getElementById('groupSessions');
     const groupDateList = document.getElementById('groupDateList');
     const addGroupDateBtn = document.getElementById('addGroupDateBtn');
+    const bulkDateDialog = document.getElementById('bulkDateDialog');
+    const bulkDateTitle = document.getElementById('bulkDateTitle');
+    const bulkDateGrid = document.getElementById('bulkDateGrid');
+    const bulkClearBtn = document.getElementById('bulkClearBtn');
+    const bulkCancelBtn = document.getElementById('bulkCancelBtn');
+    const bulkSaveBtn = document.getElementById('bulkSaveBtn');
     const parentMeetingsEnabledInput = document.getElementById('parentMeetingsEnabled');
     const parentMeetingsFields = document.getElementById('parentMeetingsFields');
     const parentMeetingsBody = document.getElementById('parentMeetingsBody');
@@ -603,6 +692,7 @@
     const addAdditionalExpenseBtn = document.getElementById('addAdditionalExpense');
     let currentPeriod = '';
     let saveTimer = null;
+    let bulkDateTargetRow = null;
 
     function effectiveRate() {
         const base = parseFloat(document.getElementById('baseSalary').value) || 0;
@@ -632,6 +722,40 @@
             ? `<input type="date" class="sess-date" value="${escapeAttr(iso ? v : '')}" />`
             : `<input type="text" class="sess-date sess-date-legacy" placeholder="למשל 4.2.26" value="${escapeAttr(v)}" inputmode="numeric" />`;
         return `<span class="date-slot">${inputHtml}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
+    }
+
+    function periodYearMonth() {
+        const p = periodInput.value || defaultPeriodValue();
+        const [y, m] = String(p).split('-').map((x) => parseInt(x, 10));
+        if (!y || !m) return { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+        return { year: y, month: m };
+    }
+
+    function openBulkDatePickerForRow(tr) {
+        bulkDateTargetRow = tr;
+        const { year, month } = periodYearMonth();
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const selected = new Set(
+            Array.from(tr.querySelectorAll('.date-slot input.sess-date'))
+                .map((i) => i.value)
+                .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && v.startsWith(`${year}-${String(month).padStart(2, '0')}-`))
+                .map((v) => Number(v.slice(-2)))
+        );
+        const name = tr.querySelector('.col-name input')?.value.trim() || 'מטופל/ת';
+        bulkDateTitle.textContent = `בחירת תאריכי מפגשים - ${name} (${String(month).padStart(2, '0')}/${year})`;
+        bulkDateGrid.innerHTML = '';
+        for (let d = 1; d <= daysInMonth; d += 1) {
+            const checked = selected.has(d);
+            const label = document.createElement('label');
+            label.className = `bulk-day${checked ? ' active' : ''}`;
+            label.innerHTML = `<input type="checkbox" value="${d}" ${checked ? 'checked' : ''} /><span>${d}</span>`;
+            const cb = label.querySelector('input');
+            cb.addEventListener('change', () => {
+                label.classList.toggle('active', cb.checked);
+            });
+            bulkDateGrid.appendChild(label);
+        }
+        bulkDateDialog.showModal();
     }
 
     function countFilledGroupDates() {
@@ -907,6 +1031,7 @@
 
         const list = tr.querySelector('.date-row-list');
         const addBtn = tr.querySelector('.add-date-btn');
+        const bulkBtn = tr.querySelector('.bulk-date-btn');
 
         list.addEventListener('input', (e) => {
             if (!e.target.matches('.sess-date, .sess-date-legacy')) return;
@@ -946,6 +1071,10 @@
             wrap.querySelector('input')?.focus();
         });
 
+        bulkBtn.addEventListener('click', () => {
+            openBulkDatePickerForRow(tr);
+        });
+
         tr.querySelector('.sessions')?.addEventListener('input', schedulePersist);
         tr.querySelector('.sessions')?.addEventListener('change', schedulePersist);
     }
@@ -958,7 +1087,9 @@
             dates,
             sessions: parseFloat(tr.querySelector('.sessions')?.value) || 0,
             cancelPaid: parseFloat(tr.querySelector('.cancel-paid')?.value) || 0,
-            cancelUnpaid: parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0
+            cancelUnpaid: parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0,
+            paidToCenter: !!tr.querySelector('.paid-center')?.checked,
+            paidToTherapist: !!tr.querySelector('.paid-therapist')?.checked
         };
     }
 
@@ -1092,13 +1223,31 @@
         let totalBillable = 0;
         let totalUnpaid = 0;
         let individualTotal = 0;
+        let paidToCenterTotal = 0;
+        let paidToTherapistTotal = 0;
+        let paidToCenterApplied = 0;
+        let paidToTherapistApplied = 0;
         tbody.querySelectorAll('tr').forEach(tr => {
             const sessions = parseFloat(tr.querySelector('.sessions')?.value) || 0;
             const cancelPaid = parseFloat(tr.querySelector('.cancel-paid')?.value) || 0;
             const cancelUnpaid = parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0;
-            totalBillable += sessions + cancelPaid;
+            const paidToCenter = !!tr.querySelector('.paid-center')?.checked;
+            const paidToTherapist = !!tr.querySelector('.paid-therapist')?.checked;
+            const billable = sessions + cancelPaid;
+            const therapistShare = billable * rate;
+            const grossRow = billable * clientRate;
+            const centerShare = Math.max(0, grossRow - therapistShare);
+            totalBillable += billable;
             totalUnpaid += cancelUnpaid;
-            individualTotal += (sessions + cancelPaid) * rate;
+            individualTotal += therapistShare;
+            if (paidToCenter) {
+                paidToCenterTotal += grossRow;
+                paidToCenterApplied += centerShare;
+            }
+            if (paidToTherapist) {
+                paidToTherapistTotal += grossRow;
+                paidToTherapistApplied += therapistShare;
+            }
         });
         const g = collectGroupState();
         const extras = collectExtrasState();
@@ -1131,6 +1280,9 @@
         const grossIndividualTotal = totalBillable * clientRate;
         const centerTotal = Math.max(0, grossIndividualTotal - individualTotal) + languageEvalCenterTotal + courseExpensesTotal - additionalExpensesTotal;
         const grandTotal = individualTotal + groupTotal + parentMeetingsTotal + languageEvalTherapistTotal + diagnosticsTotal + groupAssessmentsTotal + extraRolesTotal + additionalExpensesTotal - courseExpensesTotal;
+        const remainingToCenter = Math.max(0, centerTotal - paidToCenterApplied);
+        const remainingToTherapist = Math.max(0, grandTotal - paidToTherapistApplied);
+        const netSettlement = remainingToTherapist - remainingToCenter;
         return {
             rate,
             clientRate,
@@ -1149,6 +1301,13 @@
             grossIndividualTotal,
             centerTotal,
             grandTotal,
+            paidToCenterTotal,
+            paidToTherapistTotal,
+            paidToCenterApplied,
+            paidToTherapistApplied,
+            remainingToCenter,
+            remainingToTherapist,
+            netSettlement,
             group: g,
             extras
         };
@@ -1186,11 +1345,11 @@
         aoa.push(['חודש / תקופה', period]);
         aoa.push(['שכר בסיס למטפלת', s.baseSalary, 'מחיר לטיפול פרטני', s.clientRate, 'ישיבה חודשית (+5)', s.meetingBonus ? 'כן' : 'לא']);
         aoa.push([]);
-        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום', 'ביטול ללא תשלום', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
+        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום', 'ביטול ללא תשלום', 'שולם למרכז', 'שולם למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
         tbody.querySelectorAll('tr').forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const billable = (rd.sessions || 0) + (rd.cancelPaid || 0);
-            const rowTotal = billable * sum.rate;
+            const rowTotal = billable * sum.clientRate;
             aoa.push([
                 i + 1,
                 rd.name,
@@ -1198,8 +1357,10 @@
                 rd.sessions,
                 rd.cancelPaid,
                 rd.cancelUnpaid,
+                rd.paidToCenter ? 'כן' : '',
+                rd.paidToTherapist ? 'כן' : '',
                 rowTotal || '',
-                sum.rate
+                sum.clientRate
             ]);
         });
         aoa.push([]);
@@ -1208,6 +1369,11 @@
         aoa.push(['סה״כ פרטני (₪)', sum.individualTotal]);
         aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
         aoa.push(['חלק המרכז (₪)', sum.centerTotal]);
+        aoa.push(['שולם למרכז (₪)', sum.paidToCenterTotal, 'מקוזז למרכז מתוך מה ששולם לו (₪)', sum.paidToCenterApplied]);
+        aoa.push(['שולם למטפלת (₪)', sum.paidToTherapistTotal, 'מקוזז למטפלת מתוך מה ששולם לה (₪)', sum.paidToTherapistApplied]);
+        aoa.push(['יתרה למרכז (כמה אני חייבת למרכז) (₪)', sum.remainingToCenter]);
+        aoa.push(['יתרה למטפלת (כמה המרכז חייב לי) (₪)', sum.remainingToTherapist]);
+        aoa.push(['נטו אחרי קיזוז', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה')]);
         aoa.push(['פגישות הורים למטפלת (₪)', sum.parentMeetingsTotal]);
         aoa.push(['הערכות שפה למטפלת (₪)', sum.languageEvalTherapistTotal]);
         aoa.push(['הערכות שפה למרכז (₪)', sum.languageEvalCenterTotal]);
@@ -1297,13 +1463,13 @@
         const sum = getSummary();
         const period = formatPeriodLabel(s.period);
         let tableRows =
-            '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>סה״כ שורה</th></tr>';
+            '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>שולם למרכז</th><th>שולם למטפלת</th><th>סה״כ שורה</th></tr>';
         tbody.querySelectorAll('tr').forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const billable = (rd.sessions || 0) + (rd.cancelPaid || 0);
-            const rowTotal = billable * sum.rate;
+            const rowTotal = billable * sum.clientRate;
             const datesStr = (rd.dates || []).filter(Boolean).join(', ');
-            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${rd.cancelPaid}</td><td>${rd.cancelUnpaid}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
+            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${rd.cancelPaid}</td><td>${rd.cancelUnpaid}</td><td>${rd.paidToCenter ? 'כן' : ''}</td><td>${rd.paidToTherapist ? 'כן' : ''}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
         });
         const html =
             '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>דוח סיכום טיפולים</title></head><body dir="rtl" style="font-family:Arial,sans-serif;font-size:12pt">' +
@@ -1316,6 +1482,9 @@
             `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
             `<strong>סה״כ הכנסה פרטנית:</strong> ${sum.grossIndividualTotal} ₪<br>` +
             `<strong>חלק המרכז (פרטני):</strong> ${sum.centerTotal} ₪<br>` +
+            `<strong>שולם למרכז:</strong> ${sum.paidToCenterTotal} ₪ (מקוזז למרכז מתוך מה ששולם לו: ${sum.paidToCenterApplied} ₪) &nbsp;|&nbsp; <strong>שולם למטפלת:</strong> ${sum.paidToTherapistTotal} ₪ (מקוזז למטפלת מתוך מה ששולם לה: ${sum.paidToTherapistApplied} ₪)<br>` +
+            `<strong>יתרה למרכז (כמה אני חייבת למרכז):</strong> ${sum.remainingToCenter} ₪ &nbsp;|&nbsp; <strong>יתרה למטפלת (כמה המרכז חייב לי):</strong> ${sum.remainingToTherapist} ₪<br>` +
+            `<strong>נטו אחרי קיזוז:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה')}<br>` +
             `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
             `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
@@ -1506,7 +1675,7 @@
 
     function addRow(data) {
         const tr = document.createElement('tr');
-        const defaults = { name: '', dates: [], sessions: 0, cancelPaid: 0, cancelUnpaid: 0 };
+        const defaults = { name: '', dates: [], sessions: 0, cancelPaid: 0, cancelUnpaid: 0, paidToCenter: false, paidToTherapist: false };
         const d = Object.assign({}, defaults, data && typeof data === 'object' ? data : {});
         const dates = normalizeDatesArray(d.dates, d.sessions);
         const n = (x) => Math.max(0, Math.floor(Number(x)) || 0);
@@ -1516,11 +1685,16 @@
             <td class="col-name"><span class="name-input-shell"><input type="text" placeholder="שם" value="${escapeAttr(d.name)}" autocomplete="name" /></span></td>
             <td class="col-dates">
                 <div class="date-row-list">${datesHtml}</div>
-                <button type="button" class="btn-mini add-date-btn">+ תאריך</button>
+                <div style="display:flex; gap:0.35rem; justify-content:flex-end;">
+                    <button type="button" class="btn-mini add-date-btn">+ תאריך</button>
+                    <button type="button" class="btn-mini-alt bulk-date-btn">בחירה מרוכזת</button>
+                </div>
             </td>
             <td class="col-num"><input type="number" class="sessions" min="0" step="1" value="${n(d.sessions)}" title="מתעדכן אוטומטית לפי תאריכים; אפשר לתקן ידנית" /></td>
             <td class="col-num"><input type="number" class="cancel-paid" min="0" step="1" value="${n(d.cancelPaid)}" /></td>
             <td class="col-num"><input type="number" class="cancel-unpaid" min="0" step="1" value="${n(d.cancelUnpaid)}" /></td>
+            <td><input type="checkbox" class="paid-center" ${d.paidToCenter ? 'checked' : ''} /></td>
+            <td><input type="checkbox" class="paid-therapist" ${d.paidToTherapist ? 'checked' : ''} /></td>
             <td class="row-total">0</td>
             <td><button type="button" class="btn btn-danger row-del">מחק</button></td>
         `;
@@ -1528,6 +1702,9 @@
         tr.querySelector('.col-name input').addEventListener('change', schedulePersist);
         tr.querySelectorAll('.cancel-paid, .cancel-unpaid').forEach(inp => {
             inp.addEventListener('input', schedulePersist);
+            inp.addEventListener('change', schedulePersist);
+        });
+        tr.querySelectorAll('.paid-center, .paid-therapist').forEach(inp => {
             inp.addEventListener('change', schedulePersist);
         });
         wireDateRow(tr);
@@ -1564,13 +1741,14 @@
 
     function calculate() {
         const rate = effectiveRate();
+        const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
         document.getElementById('effectiveRate').textContent = rate.toLocaleString('he-IL');
 
         tbody.querySelectorAll('tr').forEach(tr => {
             const sessions = parseFloat(tr.querySelector('.sessions')?.value) || 0;
             const cancelPaid = parseFloat(tr.querySelector('.cancel-paid')?.value) || 0;
             const billable = sessions + cancelPaid;
-            const rowTotal = billable * rate;
+            const rowTotal = billable * clientRate;
             tr.querySelector('.row-total').textContent =
                 rowTotal ? rowTotal.toLocaleString('he-IL') + ' ₪' : '—';
         });
@@ -1591,6 +1769,18 @@
         document.getElementById('grossIndividualTotal').textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
         document.getElementById('centerTotal').textContent = sum.centerTotal.toLocaleString('he-IL');
         document.getElementById('grandTotal').textContent = sum.grandTotal.toLocaleString('he-IL');
+        document.getElementById('paidToCenterTotal').textContent = `${sum.paidToCenterTotal.toLocaleString('he-IL')} (מקוזז למרכז מתוך מה ששולם לו: ${sum.paidToCenterApplied.toLocaleString('he-IL')})`;
+        document.getElementById('paidToTherapistTotal').textContent = `${sum.paidToTherapistTotal.toLocaleString('he-IL')} (מקוזז למטפלת מתוך מה ששולם לה: ${sum.paidToTherapistApplied.toLocaleString('he-IL')})`;
+        document.getElementById('remainingToCenter').textContent = sum.remainingToCenter.toLocaleString('he-IL');
+        document.getElementById('remainingToTherapist').textContent = sum.remainingToTherapist.toLocaleString('he-IL');
+        const netEl = document.getElementById('netSettlementText');
+        if (sum.netSettlement > 0) {
+            netEl.textContent = `המרכז חייב למטפלת ${sum.netSettlement.toLocaleString('he-IL')} ₪`;
+        } else if (sum.netSettlement < 0) {
+            netEl.textContent = `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement).toLocaleString('he-IL')} ₪`;
+        } else {
+            netEl.textContent = 'אין יתרה בין הצדדים';
+        }
     }
 
     function load() {
@@ -1767,6 +1957,46 @@
         }
         addCourseExpenseRow({});
         schedulePersist();
+    });
+
+    bulkClearBtn.addEventListener('click', () => {
+        bulkDateGrid.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+            cb.checked = false;
+            cb.closest('.bulk-day')?.classList.remove('active');
+        });
+    });
+    bulkCancelBtn.addEventListener('click', () => {
+        bulkDateDialog.close();
+        bulkDateTargetRow = null;
+    });
+    bulkDateDialog.addEventListener('close', () => {
+        bulkDateTargetRow = null;
+    });
+    bulkSaveBtn.addEventListener('click', () => {
+        if (!bulkDateTargetRow) {
+            bulkDateDialog.close();
+            return;
+        }
+        const { year, month } = periodYearMonth();
+        const monthStr = String(month).padStart(2, '0');
+        const selectedDays = Array.from(bulkDateGrid.querySelectorAll('input[type="checkbox"]:checked'))
+            .map((cb) => parseInt(cb.value, 10))
+            .filter((d) => d > 0)
+            .sort((a, b) => a - b);
+        const list = bulkDateTargetRow.querySelector('.date-row-list');
+        list.innerHTML = '';
+        if (!selectedDays.length) {
+            list.innerHTML = buildDateSlotHtml('');
+        } else {
+            selectedDays.forEach((d) => {
+                const dateIso = `${year}-${monthStr}-${String(d).padStart(2, '0')}`;
+                list.innerHTML += buildDateSlotHtml(dateIso);
+            });
+        }
+        syncSessionsFromDates(bulkDateTargetRow);
+        schedulePersist();
+        bulkDateDialog.close();
+        bulkDateTargetRow = null;
     });
 
     if (!periodInput.value) periodInput.value = defaultPeriodValue();
