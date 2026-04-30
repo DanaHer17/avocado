@@ -107,6 +107,16 @@
             border-collapse: collapse;
             font-size: 0.82rem;
         }
+        .scroll-x {
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        .scroll-x.compact-table {
+            overflow-x: visible;
+        }
+        .scroll-x.expanded-table {
+            overflow-x: auto;
+        }
         th, td {
             border: 1px solid var(--border);
             padding: 0.4rem 0.35rem;
@@ -156,6 +166,52 @@
             justify-content: flex-end;
             margin-bottom: 0.35rem;
         }
+        .cancel-cell {
+            text-align: right;
+            min-width: 6.2rem;
+        }
+        .cancel-row-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            align-items: stretch;
+            margin-bottom: 0.35rem;
+        }
+        .cancel-slot {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 0.2rem;
+        }
+        .cancel-slot input[type="date"] {
+            min-width: 6.6rem;
+            border: none;
+            background: transparent;
+            padding: 0.2rem;
+        }
+        .cancel-slot select {
+            font-size: 0.74rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+            padding: 0.2rem;
+        }
+        .cancel-slot .cancel-amount {
+            width: 4rem;
+            min-width: 4rem;
+            font-size: 0.75rem;
+            padding: 0.2rem;
+        }
+        .cancel-note {
+            font-size: 0.7rem;
+            color: var(--muted);
+            display: none;
+        }
+        .scroll-x.expanded-table .cancel-cell { min-width: 10rem; }
+        .scroll-x.expanded-table .cancel-note { display: block; }
         .date-slot {
             display: inline-flex;
             align-items: center;
@@ -412,7 +468,7 @@
             <button type="button" class="btn btn-ghost" id="saveNow" title="השמירה האוטומטית פעילה תמיד">שמירה עכשיו</button>
             <span class="save-hint" id="saveHint" aria-live="polite"></span>
         </div>
-        <div class="scroll-x">
+        <div class="scroll-x compact-table" id="patientTableWrap">
             <table id="patientTable">
                 <thead>
                     <tr>
@@ -647,6 +703,7 @@
     const INITIAL_DATE_SLOTS = 1;
     const MAX_DATE_SLOTS = 31;
     const tbody = document.querySelector('#patientTable tbody');
+    const patientTableWrap = document.getElementById('patientTableWrap');
     const saveHint = document.getElementById('saveHint');
     const periodInput = document.getElementById('period');
     const groupEnabledInput = document.getElementById('groupEnabled');
@@ -722,6 +779,30 @@
             ? `<input type="date" class="sess-date" value="${escapeAttr(iso ? v : '')}" />`
             : `<input type="text" class="sess-date sess-date-legacy" placeholder="למשל 4.2.26" value="${escapeAttr(v)}" inputmode="numeric" />`;
         return `<span class="date-slot">${inputHtml}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
+    }
+
+    function buildCancelPaidSlotHtml(item) {
+        const raw = item && typeof item === 'object' ? item : {};
+        const date = String(raw.date == null ? '' : raw.date).trim();
+        const mode = raw.mode === 'custom' ? 'custom' : 'full';
+        const amount = mode === 'custom' ? (parseFloat(raw.amount) || 0) : '';
+        return `<div class="cancel-slot">
+            <input type="date" class="cancel-paid-date" value="${escapeAttr(date)}" />
+            <select class="cancel-paid-mode" aria-label="סוג תשלום ביטול">
+                <option value="full" ${mode === 'full' ? 'selected' : ''}>מלא</option>
+                <option value="custom" ${mode === 'custom' ? 'selected' : ''}>אחר</option>
+            </select>
+            <input type="number" class="cancel-amount" min="0" step="1" value="${escapeAttr(amount)}" placeholder="סכום" ${mode === 'custom' ? '' : 'disabled'} />
+            <button type="button" class="date-remove cancel-remove" title="הסר ביטול">×</button>
+        </div>`;
+    }
+
+    function buildCancelUnpaidSlotHtml(dateVal) {
+        const date = String(dateVal == null ? '' : dateVal).trim();
+        return `<div class="cancel-slot">
+            <input type="date" class="cancel-unpaid-date" value="${escapeAttr(date)}" />
+            <button type="button" class="date-remove cancel-remove" title="הסר ביטול">×</button>
+        </div>`;
     }
 
     function periodYearMonth() {
@@ -1082,15 +1163,32 @@
     function rowDataFromTr(tr) {
         const dates = Array.from(tr.querySelectorAll('.date-slot input.sess-date, .date-slot input.sess-date-legacy'))
             .map(i => i.value.trim());
+        const cancelPaidEntries = Array.from(tr.querySelectorAll('.cancel-paid-list .cancel-slot')).map((slot) => {
+            const mode = slot.querySelector('.cancel-paid-mode')?.value === 'custom' ? 'custom' : 'full';
+            return {
+                date: slot.querySelector('.cancel-paid-date')?.value.trim() || '',
+                mode,
+                amount: mode === 'custom' ? Math.max(0, parseFloat(slot.querySelector('.cancel-amount')?.value) || 0) : 0
+            };
+        });
+        const cancelUnpaidDates = Array.from(tr.querySelectorAll('.cancel-unpaid-list .cancel-unpaid-date'))
+            .map((i) => i.value.trim());
         return {
             name: tr.querySelector('.col-name input')?.value.trim() ?? '',
             dates,
             sessions: parseFloat(tr.querySelector('.sessions')?.value) || 0,
-            cancelPaid: parseFloat(tr.querySelector('.cancel-paid')?.value) || 0,
-            cancelUnpaid: parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0,
+            cancelPaidEntries,
+            cancelUnpaidDates,
             paidToCenter: !!tr.querySelector('.paid-center')?.checked,
             paidToTherapist: !!tr.querySelector('.paid-therapist')?.checked
         };
+    }
+
+    function updatePatientTableLayoutMode() {
+        if (!patientTableWrap) return;
+        const hasCancelRows = !!tbody.querySelector('.cancel-slot');
+        patientTableWrap.classList.toggle('expanded-table', hasCancelRows);
+        patientTableWrap.classList.toggle('compact-table', !hasCancelRows);
     }
 
     function collectState() {
@@ -1152,8 +1250,8 @@
             name,
             dates: [''],
             sessions: 0,
-            cancelPaid: 0,
-            cancelUnpaid: 0
+            cancelPaidEntries: [],
+            cancelUnpaidDates: []
         }));
     }
 
@@ -1221,7 +1319,9 @@
         const rate = effectiveRate();
         const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
         let totalBillable = 0;
+        let totalSessions = 0;
         let totalUnpaid = 0;
+        let totalCancellationPaidAmount = 0;
         let individualTotal = 0;
         let paidToCenterTotal = 0;
         let paidToTherapistTotal = 0;
@@ -1229,16 +1329,33 @@
         let paidToTherapistApplied = 0;
         tbody.querySelectorAll('tr').forEach(tr => {
             const sessions = parseFloat(tr.querySelector('.sessions')?.value) || 0;
-            const cancelPaid = parseFloat(tr.querySelector('.cancel-paid')?.value) || 0;
-            const cancelUnpaid = parseFloat(tr.querySelector('.cancel-unpaid')?.value) || 0;
+            const paidCancelSlots = Array.from(tr.querySelectorAll('.cancel-paid-list .cancel-slot'));
+            const paidCancelEntries = paidCancelSlots
+                .map((slot) => {
+                    const mode = slot.querySelector('.cancel-paid-mode')?.value === 'custom' ? 'custom' : 'full';
+                    const date = slot.querySelector('.cancel-paid-date')?.value.trim() || '';
+                    const amount = mode === 'custom'
+                        ? Math.max(0, parseFloat(slot.querySelector('.cancel-amount')?.value) || 0)
+                        : clientRate;
+                    return { date, amount };
+                })
+                .filter((x) => x.date);
+            const unpaidCancelDates = Array.from(tr.querySelectorAll('.cancel-unpaid-list .cancel-unpaid-date'))
+                .map((i) => i.value.trim())
+                .filter(Boolean);
+            const cancelPaidCount = paidCancelEntries.length;
+            const cancelPaidAmount = paidCancelEntries.reduce((sum, x) => sum + x.amount, 0);
+            const cancelUnpaid = unpaidCancelDates.length;
             const paidToCenter = !!tr.querySelector('.paid-center')?.checked;
             const paidToTherapist = !!tr.querySelector('.paid-therapist')?.checked;
-            const billable = sessions + cancelPaid;
+            const billable = sessions + cancelPaidCount;
             const therapistShare = billable * rate;
-            const grossRow = billable * clientRate;
+            const grossRow = (sessions * clientRate) + cancelPaidAmount;
             const centerShare = Math.max(0, grossRow - therapistShare);
+            totalSessions += sessions;
             totalBillable += billable;
             totalUnpaid += cancelUnpaid;
+            totalCancellationPaidAmount += cancelPaidAmount;
             individualTotal += therapistShare;
             if (paidToCenter) {
                 paidToCenterTotal += grossRow;
@@ -1277,7 +1394,7 @@
         const courseExpensesTotal = extras.courseExpensesEnabled
             ? extras.courseExpenses.reduce((sum, x) => sum + toAmount(x.cost, 0), 0)
             : 0;
-        const grossIndividualTotal = totalBillable * clientRate;
+        const grossIndividualTotal = (totalSessions * clientRate) + totalCancellationPaidAmount;
         const centerTotal = Math.max(0, grossIndividualTotal - individualTotal) + languageEvalCenterTotal + courseExpensesTotal - additionalExpensesTotal;
         const grandTotal = individualTotal + groupTotal + parentMeetingsTotal + languageEvalTherapistTotal + diagnosticsTotal + groupAssessmentsTotal + extraRolesTotal + additionalExpensesTotal - courseExpensesTotal;
         const remainingToCenter = Math.max(0, centerTotal - paidToCenterApplied);
@@ -1345,18 +1462,25 @@
         aoa.push(['חודש / תקופה', period]);
         aoa.push(['שכר בסיס למטפלת', s.baseSalary, 'מחיר לטיפול פרטני', s.clientRate, 'ישיבה חודשית (+5)', s.meetingBonus ? 'כן' : 'לא']);
         aoa.push([]);
-        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום', 'ביטול ללא תשלום', 'שולם למרכז', 'שולם למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
+        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום (תאריכים)', 'ביטול ללא תשלום (תאריכים)', 'שולם למרכז', 'שולם למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
         tbody.querySelectorAll('tr').forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
-            const billable = (rd.sessions || 0) + (rd.cancelPaid || 0);
-            const rowTotal = billable * sum.clientRate;
+            const paidCancelTotal = (rd.cancelPaidEntries || []).reduce((acc, x) => {
+                if (!x || !x.date) return acc;
+                const amount = x.mode === 'custom' ? (parseFloat(x.amount) || 0) : sum.clientRate;
+                return acc + Math.max(0, amount);
+            }, 0);
+            const rowTotal = ((rd.sessions || 0) * sum.clientRate) + paidCancelTotal;
             aoa.push([
                 i + 1,
                 rd.name,
                 (rd.dates || []).filter(Boolean).join(', '),
                 rd.sessions,
-                rd.cancelPaid,
-                rd.cancelUnpaid,
+                (rd.cancelPaidEntries || [])
+                    .filter((x) => x && x.date)
+                    .map((x) => `${x.date}${x.mode === 'custom' ? ` (${Math.max(0, parseFloat(x.amount) || 0)}₪)` : ' (מלא)'}`)
+                    .join(', '),
+                (rd.cancelUnpaidDates || []).filter(Boolean).join(', '),
                 rd.paidToCenter ? 'כן' : '',
                 rd.paidToTherapist ? 'כן' : '',
                 rowTotal || '',
@@ -1466,10 +1590,19 @@
             '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>שולם למרכז</th><th>שולם למטפלת</th><th>סה״כ שורה</th></tr>';
         tbody.querySelectorAll('tr').forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
-            const billable = (rd.sessions || 0) + (rd.cancelPaid || 0);
-            const rowTotal = billable * sum.clientRate;
+            const paidCancelTotal = (rd.cancelPaidEntries || []).reduce((acc, x) => {
+                if (!x || !x.date) return acc;
+                const amount = x.mode === 'custom' ? (parseFloat(x.amount) || 0) : sum.clientRate;
+                return acc + Math.max(0, amount);
+            }, 0);
+            const rowTotal = ((rd.sessions || 0) * sum.clientRate) + paidCancelTotal;
             const datesStr = (rd.dates || []).filter(Boolean).join(', ');
-            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${rd.cancelPaid}</td><td>${rd.cancelUnpaid}</td><td>${rd.paidToCenter ? 'כן' : ''}</td><td>${rd.paidToTherapist ? 'כן' : ''}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
+            const cancelPaidStr = (rd.cancelPaidEntries || [])
+                .filter((x) => x && x.date)
+                .map((x) => `${x.date}${x.mode === 'custom' ? ` (${Math.max(0, parseFloat(x.amount) || 0)}₪)` : ' (מלא)'}`)
+                .join(', ');
+            const cancelUnpaidStr = (rd.cancelUnpaidDates || []).filter(Boolean).join(', ');
+            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${escapeHtml(cancelPaidStr)}</td><td>${escapeHtml(cancelUnpaidStr)}</td><td>${rd.paidToCenter ? 'כן' : ''}</td><td>${rd.paidToTherapist ? 'כן' : ''}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
         });
         const html =
             '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>דוח סיכום טיפולים</title></head><body dir="rtl" style="font-family:Arial,sans-serif;font-size:12pt">' +
@@ -1673,13 +1806,59 @@
         return arr;
     }
 
+    function normalizeCancelPaidArray(items, fallbackCount) {
+        const fromItems = Array.isArray(items) ? items : [];
+        let arr = fromItems.map((x) => {
+            if (x && typeof x === 'object') {
+                return {
+                    date: String(x.date == null ? '' : x.date).trim(),
+                    mode: x.mode === 'custom' ? 'custom' : 'full',
+                    amount: Math.max(0, parseFloat(x.amount) || 0)
+                };
+            }
+            return { date: '', mode: 'full', amount: 0 };
+        });
+        if (!arr.length) {
+            const cnt = Math.max(0, Math.floor(Number(fallbackCount) || 0));
+            for (let i = 0; i < cnt; i += 1) arr.push({ date: '', mode: 'full', amount: 0 });
+        }
+        return arr;
+    }
+
+    function normalizeCancelUnpaidArray(items, fallbackCount) {
+        const fromItems = Array.isArray(items) ? items : [];
+        let arr = fromItems.map((x) => {
+            if (x && typeof x === 'object') return String(x.date == null ? '' : x.date).trim();
+            return String(x == null ? '' : x).trim();
+        });
+        if (!arr.length) {
+            const cnt = Math.max(0, Math.floor(Number(fallbackCount) || 0));
+            for (let i = 0; i < cnt; i += 1) arr.push('');
+        }
+        return arr;
+    }
+
     function addRow(data) {
         const tr = document.createElement('tr');
-        const defaults = { name: '', dates: [], sessions: 0, cancelPaid: 0, cancelUnpaid: 0, paidToCenter: false, paidToTherapist: false };
+        const defaults = {
+            name: '',
+            dates: [],
+            sessions: 0,
+            cancelPaidEntries: [],
+            cancelUnpaidDates: [],
+            cancelPaid: 0,
+            cancelUnpaid: 0,
+            paidToCenter: false,
+            paidToTherapist: false
+        };
         const d = Object.assign({}, defaults, data && typeof data === 'object' ? data : {});
         const dates = normalizeDatesArray(d.dates, d.sessions);
+        const paidCancels = normalizeCancelPaidArray(d.cancelPaidEntries, d.cancelPaid);
+        const unpaidCancels = normalizeCancelUnpaidArray(d.cancelUnpaidDates, d.cancelUnpaid);
         const n = (x) => Math.max(0, Math.floor(Number(x)) || 0);
         const datesHtml = dates.map(dt => buildDateSlotHtml(dt)).join('');
+        const cancelPaidHtml = paidCancels.map((item) => buildCancelPaidSlotHtml(item)).join('');
+        const cancelUnpaidHtml = unpaidCancels.map((item) => buildCancelUnpaidSlotHtml(item)).join('');
         tr.innerHTML = `
             <td class="row-idx"></td>
             <td class="col-name"><span class="name-input-shell"><input type="text" placeholder="שם" value="${escapeAttr(d.name)}" autocomplete="name" /></span></td>
@@ -1691,8 +1870,15 @@
                 </div>
             </td>
             <td class="col-num"><input type="number" class="sessions" min="0" step="1" value="${n(d.sessions)}" title="מתעדכן אוטומטית לפי תאריכים; אפשר לתקן ידנית" /></td>
-            <td class="col-num"><input type="number" class="cancel-paid" min="0" step="1" value="${n(d.cancelPaid)}" /></td>
-            <td class="col-num"><input type="number" class="cancel-unpaid" min="0" step="1" value="${n(d.cancelUnpaid)}" /></td>
+            <td class="cancel-cell">
+                <div class="cancel-row-list cancel-paid-list">${cancelPaidHtml}</div>
+                <button type="button" class="btn-mini add-cancel-paid-btn">+ ביטול בתשלום</button>
+                <div class="cancel-note">מלא = מחיר טיפול פרטני מלא, אחר = סכום ידני.</div>
+            </td>
+            <td class="cancel-cell">
+                <div class="cancel-row-list cancel-unpaid-list">${cancelUnpaidHtml}</div>
+                <button type="button" class="btn-mini add-cancel-unpaid-btn">+ ביטול ללא תשלום</button>
+            </td>
             <td><input type="checkbox" class="paid-center" ${d.paidToCenter ? 'checked' : ''} /></td>
             <td><input type="checkbox" class="paid-therapist" ${d.paidToTherapist ? 'checked' : ''} /></td>
             <td class="row-total">0</td>
@@ -1700,9 +1886,44 @@
         `;
         tr.querySelector('.col-name input').addEventListener('input', schedulePersist);
         tr.querySelector('.col-name input').addEventListener('change', schedulePersist);
-        tr.querySelectorAll('.cancel-paid, .cancel-unpaid').forEach(inp => {
-            inp.addEventListener('input', schedulePersist);
-            inp.addEventListener('change', schedulePersist);
+        tr.querySelector('.add-cancel-paid-btn')?.addEventListener('click', () => {
+            const list = tr.querySelector('.cancel-paid-list');
+            const wrap = document.createElement('div');
+            wrap.innerHTML = buildCancelPaidSlotHtml({ date: '', mode: 'full', amount: 0 });
+            list.appendChild(wrap.firstElementChild);
+            updatePatientTableLayoutMode();
+            schedulePersist();
+        });
+        tr.querySelector('.add-cancel-unpaid-btn')?.addEventListener('click', () => {
+            const list = tr.querySelector('.cancel-unpaid-list');
+            const wrap = document.createElement('div');
+            wrap.innerHTML = buildCancelUnpaidSlotHtml('');
+            list.appendChild(wrap.firstElementChild);
+            updatePatientTableLayoutMode();
+            schedulePersist();
+        });
+        tr.querySelectorAll('.cancel-paid-list, .cancel-unpaid-list').forEach((list) => {
+            list.addEventListener('input', schedulePersist);
+            list.addEventListener('change', (e) => {
+                if (e.target.matches('.cancel-paid-mode')) {
+                    const slot = e.target.closest('.cancel-slot');
+                    const amountInput = slot?.querySelector('.cancel-amount');
+                    if (amountInput) {
+                        amountInput.disabled = e.target.value !== 'custom';
+                        if (e.target.value !== 'custom') amountInput.value = '';
+                    }
+                }
+                schedulePersist();
+            });
+            list.addEventListener('click', (e) => {
+                const btn = e.target.closest('.cancel-remove');
+                if (!btn) return;
+                const slot = btn.closest('.cancel-slot');
+                if (!slot) return;
+                slot.remove();
+                updatePatientTableLayoutMode();
+                schedulePersist();
+            });
         });
         tr.querySelectorAll('.paid-center, .paid-therapist').forEach(inp => {
             inp.addEventListener('change', schedulePersist);
@@ -1720,6 +1941,7 @@
         });
         tbody.appendChild(tr);
         renumber();
+        updatePatientTableLayoutMode();
         calculate();
     }
 
@@ -1740,15 +1962,24 @@
     }
 
     function calculate() {
+        updatePatientTableLayoutMode();
         const rate = effectiveRate();
         const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
         document.getElementById('effectiveRate').textContent = rate.toLocaleString('he-IL');
 
         tbody.querySelectorAll('tr').forEach(tr => {
             const sessions = parseFloat(tr.querySelector('.sessions')?.value) || 0;
-            const cancelPaid = parseFloat(tr.querySelector('.cancel-paid')?.value) || 0;
-            const billable = sessions + cancelPaid;
-            const rowTotal = billable * clientRate;
+            const paidCancelEntries = Array.from(tr.querySelectorAll('.cancel-paid-list .cancel-slot'))
+                .map((slot) => {
+                    const date = slot.querySelector('.cancel-paid-date')?.value.trim() || '';
+                    const mode = slot.querySelector('.cancel-paid-mode')?.value === 'custom' ? 'custom' : 'full';
+                    const amount = mode === 'custom'
+                        ? Math.max(0, parseFloat(slot.querySelector('.cancel-amount')?.value) || 0)
+                        : clientRate;
+                    return { date, amount };
+                })
+                .filter((x) => x.date);
+            const rowTotal = (sessions * clientRate) + paidCancelEntries.reduce((sum, x) => sum + x.amount, 0);
             tr.querySelector('.row-total').textContent =
                 rowTotal ? rowTotal.toLocaleString('he-IL') + ' ₪' : '—';
         });
