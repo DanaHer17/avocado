@@ -129,6 +129,21 @@
             color: var(--muted);
             white-space: nowrap;
         }
+        #patientTable tbody tr {
+            transition: background-color 0.15s ease;
+        }
+        #patientTable tbody tr.row-pay-mark.row-pay-target-center {
+            background: rgba(59, 130, 246, 0.11);
+        }
+        #patientTable tbody tr.row-pay-mark.row-pay-target-therapist {
+            background: rgba(16, 185, 129, 0.11);
+        }
+        #patientTable tbody tr.row-pay-mark.row-pay-target-both {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+        }
+        #patientTable tbody tr.row-pay-mark.row-pay-target-none {
+            background: rgba(250, 204, 21, 0.14);
+        }
         td input { min-width: 0; font-size: 0.8rem; padding: 0.35rem; }
         .name-input-shell {
             display: block;
@@ -404,6 +419,7 @@
                 page-break-inside: avoid;
             }
             .summary { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            #patientTable tbody tr.row-pay-mark { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -478,6 +494,7 @@
                         <th>מפגשים <span style="font-weight:400;font-size:0.75rem">(אוטו׳)</span></th>
                         <th>ביטול בתשלום</th>
                         <th>ביטול ללא תשלום</th>
+                        <th>שולם</th>
                         <th>שולם למרכז</th>
                         <th>שולם למטפלת</th>
                         <th>סה״כ שורה</th>
@@ -1179,8 +1196,76 @@
             sessions: parseFloat(tr.querySelector('.sessions')?.value) || 0,
             cancelPaidEntries,
             cancelUnpaidDates,
+            paidReceived: !!tr.querySelector('.paid-mark')?.checked,
             paidToCenter: !!tr.querySelector('.paid-center')?.checked,
             paidToTherapist: !!tr.querySelector('.paid-therapist')?.checked
+        };
+    }
+
+    function rowGrossFromRd(rd, clientRate) {
+        const cr = parseFloat(clientRate) || 0;
+        const paidCancelTotal = (rd.cancelPaidEntries || []).reduce((acc, x) => {
+            if (!x || !x.date) return acc;
+            const amount = x.mode === 'custom' ? (parseFloat(x.amount) || 0) : cr;
+            return acc + Math.max(0, amount);
+        }, 0);
+        return ((rd.sessions || 0) * cr) + paidCancelTotal;
+    }
+
+    function paymentDestinationLabel(paidReceived, toCenter, toTherapist) {
+        if (!paidReceived) return '';
+        const parts = [];
+        if (toCenter) parts.push('מרכז');
+        if (toTherapist) parts.push('מטפלת');
+        if (!parts.length) return 'לא צוין יעד (סמני למרכז / למטפלת)';
+        return parts.join(' + ');
+    }
+
+    function updateRowPaidStyle(tr) {
+        const mark = tr.querySelector('.paid-mark')?.checked;
+        const c = tr.querySelector('.paid-center')?.checked;
+        const t = tr.querySelector('.paid-therapist')?.checked;
+        tr.classList.remove('row-pay-mark', 'row-pay-target-center', 'row-pay-target-therapist', 'row-pay-target-both', 'row-pay-target-none');
+        if (!mark) return;
+        tr.classList.add('row-pay-mark');
+        if (c && t) tr.classList.add('row-pay-target-both');
+        else if (c) tr.classList.add('row-pay-target-center');
+        else if (t) tr.classList.add('row-pay-target-therapist');
+        else tr.classList.add('row-pay-target-none');
+    }
+
+    function updateAllRowPaidStyles() {
+        tbody.querySelectorAll('tr').forEach(updateRowPaidStyle);
+    }
+
+    function buildPaymentRoutingSummary(state, sum) {
+        const clientRate = parseFloat(state.clientRate) || 0;
+        const rows = (state.rows || []).map((rd, i) => {
+            const gross = rowGrossFromRd(rd, clientRate);
+            const pr = !!rd.paidReceived;
+            const toC = !!rd.paidToCenter;
+            const toT = !!rd.paidToTherapist;
+            return {
+                row: i + 1,
+                name: rd.name || '',
+                rowTotal: gross,
+                paidChecked: pr,
+                paidToCenter: toC,
+                paidToTherapist: toT,
+                whoReceivesPayment_he: paymentDestinationLabel(pr, toC, toT),
+                countedForCenterKizuz: pr && toC ? gross : 0,
+                countedForTherapistKizuz: pr && toT ? gross : 0
+            };
+        });
+        return {
+            note_he: 'מי משלם לאן: כש«שולם» מסומן, סכום השורה נכנס לקיזוז לפי «שולם למרכז» / «שולם למטפלת».',
+            rows,
+            totalsMatchScreen: {
+                paidToCenterTotal: sum.paidToCenterTotal,
+                paidToTherapistTotal: sum.paidToTherapistTotal,
+                paidToCenterApplied: sum.paidToCenterApplied,
+                paidToTherapistApplied: sum.paidToTherapistApplied
+            }
         };
     }
 
@@ -1346,6 +1431,7 @@
             const cancelPaidCount = paidCancelEntries.length;
             const cancelPaidAmount = paidCancelEntries.reduce((sum, x) => sum + x.amount, 0);
             const cancelUnpaid = unpaidCancelDates.length;
+            const paymentMarked = !!tr.querySelector('.paid-mark')?.checked;
             const paidToCenter = !!tr.querySelector('.paid-center')?.checked;
             const paidToTherapist = !!tr.querySelector('.paid-therapist')?.checked;
             const billable = sessions + cancelPaidCount;
@@ -1357,11 +1443,11 @@
             totalUnpaid += cancelUnpaid;
             totalCancellationPaidAmount += cancelPaidAmount;
             individualTotal += therapistShare;
-            if (paidToCenter) {
+            if (paymentMarked && paidToCenter) {
                 paidToCenterTotal += grossRow;
                 paidToCenterApplied += centerShare;
             }
-            if (paidToTherapist) {
+            if (paymentMarked && paidToTherapist) {
                 paidToTherapistTotal += grossRow;
                 paidToTherapistApplied += therapistShare;
             }
@@ -1462,7 +1548,7 @@
         aoa.push(['חודש / תקופה', period]);
         aoa.push(['שכר בסיס למטפלת', s.baseSalary, 'מחיר לטיפול פרטני', s.clientRate, 'ישיבה חודשית (+5)', s.meetingBonus ? 'כן' : 'לא']);
         aoa.push([]);
-        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום (תאריכים)', 'ביטול ללא תשלום (תאריכים)', 'שולם למרכז', 'שולם למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
+        aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום (תאריכים)', 'ביטול ללא תשלום (תאריכים)', 'שולם', 'יעד תשלום', 'שולם למרכז', 'שולם למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
         tbody.querySelectorAll('tr').forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const paidCancelTotal = (rd.cancelPaidEntries || []).reduce((acc, x) => {
@@ -1471,6 +1557,7 @@
                 return acc + Math.max(0, amount);
             }, 0);
             const rowTotal = ((rd.sessions || 0) * sum.clientRate) + paidCancelTotal;
+            const dest = paymentDestinationLabel(!!rd.paidReceived, !!rd.paidToCenter, !!rd.paidToTherapist);
             aoa.push([
                 i + 1,
                 rd.name,
@@ -1481,10 +1568,31 @@
                     .map((x) => `${x.date}${x.mode === 'custom' ? ` (${Math.max(0, parseFloat(x.amount) || 0)}₪)` : ' (מלא)'}`)
                     .join(', '),
                 (rd.cancelUnpaidDates || []).filter(Boolean).join(', '),
+                rd.paidReceived ? 'כן' : '',
+                dest,
                 rd.paidToCenter ? 'כן' : '',
                 rd.paidToTherapist ? 'כן' : '',
                 rowTotal || '',
                 sum.clientRate
+            ]);
+        });
+        aoa.push([]);
+        aoa.push(['מי משלם לאן — לפי שורות (שולם + יעד)']);
+        aoa.push(['#', 'שם', 'סה״כ שורה (₪)', 'שולם', 'יעד', 'נספר בקיזוז למרכז (₪)', 'נספר בקיזוז למטפלת (₪)']);
+        tbody.querySelectorAll('tr').forEach((tr, i) => {
+            const rd = rowDataFromTr(tr);
+            const rowTotal = rowGrossFromRd(rd, sum.clientRate);
+            const pr = !!rd.paidReceived;
+            const toC = !!rd.paidToCenter;
+            const toT = !!rd.paidToTherapist;
+            aoa.push([
+                i + 1,
+                rd.name || '',
+                rowTotal || '',
+                pr ? 'כן' : '',
+                paymentDestinationLabel(pr, toC, toT),
+                pr && toC ? rowTotal : '',
+                pr && toT ? rowTotal : ''
             ]);
         });
         aoa.push([]);
@@ -1587,7 +1695,8 @@
         const sum = getSummary();
         const period = formatPeriodLabel(s.period);
         let tableRows =
-            '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>שולם למרכז</th><th>שולם למטפלת</th><th>סה״כ שורה</th></tr>';
+            '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>שולם</th><th>שולם למרכז</th><th>שולם למטפלת</th><th>סה״כ שורה</th></tr>';
+        let routingLines = '';
         tbody.querySelectorAll('tr').forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const paidCancelTotal = (rd.cancelPaidEntries || []).reduce((acc, x) => {
@@ -1602,13 +1711,23 @@
                 .map((x) => `${x.date}${x.mode === 'custom' ? ` (${Math.max(0, parseFloat(x.amount) || 0)}₪)` : ' (מלא)'}`)
                 .join(', ');
             const cancelUnpaidStr = (rd.cancelUnpaidDates || []).filter(Boolean).join(', ');
-            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${escapeHtml(cancelPaidStr)}</td><td>${escapeHtml(cancelUnpaidStr)}</td><td>${rd.paidToCenter ? 'כן' : ''}</td><td>${rd.paidToTherapist ? 'כן' : ''}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
+            const dest = paymentDestinationLabel(!!rd.paidReceived, !!rd.paidToCenter, !!rd.paidToTherapist);
+            tableRows += `<tr><td>${i + 1}</td><td>${escapeHtml(rd.name)}</td><td>${escapeHtml(datesStr)}</td><td>${rd.sessions}</td><td>${escapeHtml(cancelPaidStr)}</td><td>${escapeHtml(cancelUnpaidStr)}</td><td>${rd.paidReceived ? 'כן' : ''}</td><td>${rd.paidToCenter ? 'כן' : ''}</td><td>${rd.paidToTherapist ? 'כן' : ''}</td><td>${rowTotal ? escapeHtml(String(rowTotal)) + ' ₪' : ''}</td></tr>`;
+            if (rd.paidReceived) {
+                const kc = rd.paidToCenter ? `${rowTotal} ₪` : '—';
+                const kt = rd.paidToTherapist ? `${rowTotal} ₪` : '—';
+                routingLines += `<li><strong>${escapeHtml(rd.name || 'ללא שם')}</strong> — יעד: ${escapeHtml(dest)} — קיזוז למרכז: ${escapeHtml(kc)} — קיזוז למטפלת: ${escapeHtml(kt)}</li>`;
+            }
         });
+        const routingBlock = routingLines
+            ? `<h2 style="font-size:14pt;margin-top:18pt">מי משלם לאן (שורות מסומנות «שולם»)</h2><ul style="margin:6pt 0 0;padding-inline-start:20px">${routingLines}</ul>`
+            : '';
         const html =
             '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>דוח סיכום טיפולים</title></head><body dir="rtl" style="font-family:Arial,sans-serif;font-size:12pt">' +
             '<h1 style="font-size:16pt">דוח סיכום טיפולים</h1>' +
             `<p>חודש / תקופה: ${escapeHtml(period)} &nbsp;|&nbsp; שכר בסיס: ${escapeHtml(s.baseSalary)} &nbsp;|&nbsp; מחיר לטיפול פרטני: ${escapeHtml(s.clientRate)} &nbsp;|&nbsp; ישיבה חודשית: ${s.meetingBonus ? 'כן' : 'לא'}</p>` +
             `<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">${tableRows}</table>` +
+            routingBlock +
             `<p><strong>תעריף למפגש:</strong> ${sum.rate} ₪<br>` +
             `<strong>סה״כ מפגשים לחישוב:</strong> ${sum.totalBillable}<br>` +
             `<strong>סה״כ ביטולים ללא תשלום:</strong> ${sum.totalUnpaid}<br>` +
@@ -1635,11 +1754,14 @@
 
     function exportJsonBackup() {
         calculate();
+        const state = collectState();
+        const sum = getSummary();
         const payload = {
             version: 1,
             exportedAt: new Date().toISOString(),
-            ...collectState(),
-            summary: getSummary()
+            ...state,
+            summary: sum,
+            paymentRoutingSummary: buildPaymentRoutingSummary(state, sum)
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
         downloadBlob(`treatment-backup-${stampFilename()}.json`, blob);
@@ -1848,10 +1970,14 @@
             cancelUnpaidDates: [],
             cancelPaid: 0,
             cancelUnpaid: 0,
+            paidReceived: false,
             paidToCenter: false,
             paidToTherapist: false
         };
         const d = Object.assign({}, defaults, data && typeof data === 'object' ? data : {});
+        if (typeof d.paidReceived !== 'boolean') {
+            d.paidReceived = !!(d.paidToCenter || d.paidToTherapist);
+        }
         const dates = normalizeDatesArray(d.dates, d.sessions);
         const paidCancels = normalizeCancelPaidArray(d.cancelPaidEntries, d.cancelPaid);
         const unpaidCancels = normalizeCancelUnpaidArray(d.cancelUnpaidDates, d.cancelUnpaid);
@@ -1879,6 +2005,7 @@
                 <div class="cancel-row-list cancel-unpaid-list">${cancelUnpaidHtml}</div>
                 <button type="button" class="btn-mini add-cancel-unpaid-btn">+ ביטול ללא תשלום</button>
             </td>
+            <td><input type="checkbox" class="paid-mark" title="שולם — הדגשת שורה; הקיזוז נספר רק כשזה מסומן יחד עם למרכז/למטפלת" ${d.paidReceived ? 'checked' : ''} /></td>
             <td><input type="checkbox" class="paid-center" ${d.paidToCenter ? 'checked' : ''} /></td>
             <td><input type="checkbox" class="paid-therapist" ${d.paidToTherapist ? 'checked' : ''} /></td>
             <td class="row-total">0</td>
@@ -1925,8 +2052,24 @@
                 schedulePersist();
             });
         });
-        tr.querySelectorAll('.paid-center, .paid-therapist').forEach(inp => {
-            inp.addEventListener('change', schedulePersist);
+        const paidMarkEl = tr.querySelector('.paid-mark');
+        paidMarkEl?.addEventListener('change', () => {
+            if (!paidMarkEl.checked) {
+                tr.querySelectorAll('.paid-center, .paid-therapist').forEach((c) => { c.checked = false; });
+            }
+            updateRowPaidStyle(tr);
+            schedulePersist();
+        });
+        tr.querySelectorAll('.paid-center, .paid-therapist').forEach((inp) => {
+            inp.addEventListener('change', () => {
+                if (inp.checked) {
+                    if (paidMarkEl) paidMarkEl.checked = true;
+                } else if (!tr.querySelector('.paid-center')?.checked && !tr.querySelector('.paid-therapist')?.checked) {
+                    if (paidMarkEl) paidMarkEl.checked = false;
+                }
+                updateRowPaidStyle(tr);
+                schedulePersist();
+            });
         });
         wireDateRow(tr);
         const savedSessionCount = n(d.sessions);
@@ -1941,6 +2084,7 @@
         });
         tbody.appendChild(tr);
         renumber();
+        updateRowPaidStyle(tr);
         updatePatientTableLayoutMode();
         calculate();
     }
@@ -1962,6 +2106,7 @@
     }
 
     function calculate() {
+        updateAllRowPaidStyles();
         updatePatientTableLayoutMode();
         const rate = effectiveRate();
         const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
