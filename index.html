@@ -525,6 +525,28 @@
     </div>
 
     <div class="card">
+        <h2 style="font-size:1rem;margin:0 0 0.75rem;">פרטי תשלום המטפלת</h2>
+        <div class="settings-grid">
+            <div>
+                <label for="therapistPayFullName">שם מלא</label>
+                <input type="text" id="therapistPayFullName" value="דנה גרץ" />
+            </div>
+            <div>
+                <label for="therapistPayBankName">שם בנק</label>
+                <input type="text" id="therapistPayBankName" value="לאומי" />
+            </div>
+            <div>
+                <label for="therapistPayBranch">מספר סניף</label>
+                <input type="text" id="therapistPayBranch" value="705" inputmode="numeric" />
+            </div>
+            <div>
+                <label for="therapistPayAccount">מספר חשבון</label>
+                <input type="text" id="therapistPayAccount" value="9800164" inputmode="numeric" />
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
         <div class="check-row" style="padding-top:0;">
             <input type="checkbox" id="groupEnabled" />
             <label for="groupEnabled">האם מדריכה קבוצה?</label>
@@ -824,6 +846,10 @@
     const roleSessionTypesCard = document.getElementById('roleSessionTypesCard');
     const sessionTypesBody = document.getElementById('sessionTypesBody');
     const addSessionTypeBtn = document.getElementById('addSessionTypeBtn');
+    const therapistPayFullNameInput = document.getElementById('therapistPayFullName');
+    const therapistPayBankNameInput = document.getElementById('therapistPayBankName');
+    const therapistPayBranchInput = document.getElementById('therapistPayBranch');
+    const therapistPayAccountInput = document.getElementById('therapistPayAccount');
     const groupEnabledInput = document.getElementById('groupEnabled');
     const groupFields = document.getElementById('groupFields');
     const groupRateInput = document.getElementById('groupRate');
@@ -894,6 +920,23 @@
 
     function defaultSessionTypes() {
         return [{ id: makeSessionTypeId(), name: 'מפגש רגיל', fullPrice: 370, therapistPrice: 215 }];
+    }
+
+    function collectTherapistPaymentDetails() {
+        return {
+            fullName: therapistPayFullNameInput?.value.trim() || '',
+            bankName: therapistPayBankNameInput?.value.trim() || '',
+            branchNumber: therapistPayBranchInput?.value.trim() || '',
+            accountNumber: therapistPayAccountInput?.value.trim() || ''
+        };
+    }
+
+    function applyTherapistPaymentDetails(details) {
+        const d = details || {};
+        if (therapistPayFullNameInput) therapistPayFullNameInput.value = d.fullName != null ? String(d.fullName) : 'דנה גרץ';
+        if (therapistPayBankNameInput) therapistPayBankNameInput.value = d.bankName != null ? String(d.bankName) : 'לאומי';
+        if (therapistPayBranchInput) therapistPayBranchInput.value = d.branchNumber != null ? String(d.branchNumber) : '705';
+        if (therapistPayAccountInput) therapistPayAccountInput.value = d.accountNumber != null ? String(d.accountNumber) : '9800164';
     }
 
     function collectSessionTypes() {
@@ -1471,13 +1514,14 @@
         return { billableMeetings, rowTotal };
     }
 
-    function buildTherapistWhatsappText(meetings, amount) {
+    function buildTherapistWhatsappText(meetings, amount, therapistPaymentDetails) {
+        const d = therapistPaymentDetails || collectTherapistPaymentDetails();
         return `היי!
 החודש התקיימו ${meetings} מפגשים עליהם יש להעביר סכום של ${amount} ש"ח ל
-דנה גרץ
-בנק לאומי 10
-סניף שופטים 705
-מס חשבון 9800164
+${d.fullName || '—'}
+בנק ${d.bankName || '—'}
+סניף ${d.branchNumber || '—'}
+מס חשבון ${d.accountNumber || '—'}
 ניתן לשלם גם בביט/פייבוקס`;
     }
 
@@ -1502,8 +1546,9 @@
         const parts = rowBillingParts(rd);
         const meetings = parts.billableMeetings.toLocaleString('he-IL');
         const transferAmount = parts.rowTotal.toLocaleString('he-IL');
+        const therapistPaymentDetails = collectTherapistPaymentDetails();
         const blocks = [];
-        if (paidToTherapist) blocks.push(buildTherapistWhatsappText(meetings, transferAmount));
+        if (paidToTherapist) blocks.push(buildTherapistWhatsappText(meetings, transferAmount, therapistPaymentDetails));
         if (paidToCenter) blocks.push(buildCenterWhatsappText(meetings, transferAmount));
         const patientName = rd.name || 'ללא שם';
         paymentMsgTitle.textContent = `הודעה לוואטסאפ - ${patientName}`;
@@ -1628,6 +1673,7 @@
             clientRate: document.getElementById('clientRate').value,
             therapistRole: activeRole(),
             sessionTypes: collectSessionTypes(),
+            therapistPaymentDetails: collectTherapistPaymentDetails(),
             meetingBonus: document.getElementById('meetingBonus').checked,
             group: collectGroupState(),
             extras: collectExtrasState(),
@@ -1643,6 +1689,7 @@
         therapistRoleInput.value = s.therapistRole || ROLE_SPEECH;
         applySessionTypes(s.sessionTypes);
         roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
+        applyTherapistPaymentDetails(s.therapistPaymentDetails);
         document.getElementById('meetingBonus').checked = !!s.meetingBonus;
         const g = s.group || {};
         groupEnabledInput.checked = !!g.enabled;
@@ -2124,6 +2171,7 @@
             clientRate: core.clientRate,
             therapistRole: core.therapistRole,
             sessionTypes: core.sessionTypes,
+            therapistPaymentDetails: core.therapistPaymentDetails,
             meetingBonus: core.meetingBonus,
             group: core.group,
             extras: core.extras,
@@ -2174,6 +2222,7 @@
             clientRate,
             therapistRole: activeRole(),
             sessionTypes: collectSessionTypes(),
+            therapistPaymentDetails: collectTherapistPaymentDetails(),
             meetingBonus,
             group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
             extras: emptyExtrasState(),
@@ -2224,6 +2273,7 @@
                 clientRate: currentState.clientRate,
                 therapistRole: currentState.therapistRole,
                 sessionTypes: currentState.sessionTypes,
+                therapistPaymentDetails: currentState.therapistPaymentDetails,
                 meetingBonus: currentState.meetingBonus,
                 group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
                 extras: emptyExtrasState(),
@@ -2555,6 +2605,7 @@
                 clientRate: document.getElementById('clientRate').value,
                 therapistRole: activeRole(),
                 sessionTypes: collectSessionTypes(),
+                therapistPaymentDetails: collectTherapistPaymentDetails(),
                 meetingBonus: document.getElementById('meetingBonus').checked,
                 group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
                 extras: emptyExtrasState(),
@@ -2584,6 +2635,10 @@
         const el = document.getElementById(id);
         el.addEventListener('input', schedulePersist);
         el.addEventListener('change', schedulePersist);
+    });
+    [therapistPayFullNameInput, therapistPayBankNameInput, therapistPayBranchInput, therapistPayAccountInput].forEach((el) => {
+        el?.addEventListener('input', schedulePersist);
+        el?.addEventListener('change', schedulePersist);
     });
     therapistRoleInput.addEventListener('change', () => {
         roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
@@ -2794,6 +2849,7 @@
 
     if (!periodInput.value) periodInput.value = defaultPeriodValue();
     applySessionTypes(defaultSessionTypes());
+    applyTherapistPaymentDetails();
     roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
     renderGroupDates(['']);
     toggleGroupVisibility();
