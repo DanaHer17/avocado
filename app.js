@@ -1,9 +1,10 @@
 (function () {
-    const STORAGE_KEY = 'avocado-treatment-report-v1';
-    const ROLE_SPEECH = 'speech';
-    const ROLE_OT = 'ot';
-    const ROLE_EMOTIONAL = 'emotional';
-    const SESSION_TYPE_COLORS = [
+    const CONFIG = window.AVOCADO_CONFIG || {};
+    const STORAGE_KEY = CONFIG.storageKey || 'avocado-treatment-report-v1';
+    const ROLE_SPEECH = (CONFIG.roles && CONFIG.roles.speech) || 'speech';
+    const ROLE_OT = (CONFIG.roles && CONFIG.roles.ot) || 'ot';
+    const ROLE_EMOTIONAL = (CONFIG.roles && CONFIG.roles.emotional) || 'emotional';
+    const SESSION_TYPE_COLORS = (CONFIG.ui && CONFIG.ui.sessionTypeColors) || [
         { bg: '#ecfeff', border: '#67e8f9' },
         { bg: '#ecfdf5', border: '#6ee7b7' },
         { bg: '#fff7ed', border: '#fdba74' },
@@ -11,9 +12,16 @@
         { bg: '#f5f3ff', border: '#c4b5fd' },
         { bg: '#fffbeb', border: '#fcd34d' }
     ];
+    const DEFAULTS = CONFIG.defaults || {};
+    const DEFAULT_THERAPIST_PAYMENT = DEFAULTS.therapistPaymentDetails || {
+        fullName: 'דנה גרץ',
+        bankName: 'לאומי',
+        branchNumber: '705',
+        accountNumber: '9800164'
+    };
     /** מספר תאי תאריך בהתחלה לשורה חדשה (מוסיפים עוד עם «+ תאריך») */
-    const INITIAL_DATE_SLOTS = 1;
-    const MAX_DATE_SLOTS = 31;
+    const INITIAL_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.initialDateSlots) || 1;
+    const MAX_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.maxDateSlots) || 31;
     const tbody = document.querySelector('#patientTable tbody');
     const patientTableWrap = document.getElementById('patientTableWrap');
     const saveHint = document.getElementById('saveHint');
@@ -95,7 +103,15 @@
     }
 
     function defaultSessionTypes() {
-        return [{ id: makeSessionTypeId(), name: 'מפגש רגיל', fullPrice: 370, therapistPrice: 215 }];
+        const defs = Array.isArray(DEFAULTS.sessionTypes) && DEFAULTS.sessionTypes.length
+            ? DEFAULTS.sessionTypes
+            : [{ name: 'מפגש רגיל', fullPrice: 370, therapistPrice: 215 }];
+        return defs.map((x) => ({
+            id: makeSessionTypeId(),
+            name: x.name || 'מפגש רגיל',
+            fullPrice: Math.max(0, parseFloat(x.fullPrice) || 0),
+            therapistPrice: Math.max(0, parseFloat(x.therapistPrice) || 0)
+        }));
     }
 
     function collectTherapistPaymentDetails() {
@@ -109,10 +125,10 @@
 
     function applyTherapistPaymentDetails(details) {
         const d = details || {};
-        if (therapistPayFullNameInput) therapistPayFullNameInput.value = d.fullName != null ? String(d.fullName) : 'דנה גרץ';
-        if (therapistPayBankNameInput) therapistPayBankNameInput.value = d.bankName != null ? String(d.bankName) : 'לאומי';
-        if (therapistPayBranchInput) therapistPayBranchInput.value = d.branchNumber != null ? String(d.branchNumber) : '705';
-        if (therapistPayAccountInput) therapistPayAccountInput.value = d.accountNumber != null ? String(d.accountNumber) : '9800164';
+        if (therapistPayFullNameInput) therapistPayFullNameInput.value = d.fullName != null ? String(d.fullName) : String(DEFAULT_THERAPIST_PAYMENT.fullName || '');
+        if (therapistPayBankNameInput) therapistPayBankNameInput.value = d.bankName != null ? String(d.bankName) : String(DEFAULT_THERAPIST_PAYMENT.bankName || '');
+        if (therapistPayBranchInput) therapistPayBranchInput.value = d.branchNumber != null ? String(d.branchNumber) : String(DEFAULT_THERAPIST_PAYMENT.branchNumber || '');
+        if (therapistPayAccountInput) therapistPayAccountInput.value = d.accountNumber != null ? String(d.accountNumber) : String(DEFAULT_THERAPIST_PAYMENT.accountNumber || '');
     }
 
     function collectSessionTypes() {
