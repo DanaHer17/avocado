@@ -159,10 +159,18 @@
             <dd id="groupAssessmentsTotal">0</dd>
             <dt>תפקידים נוספים (למטפלת)</dt>
             <dd id="extraRolesTotal">0</dd>
-            <dt>הוצאות נוספות (החזר למטפלת)</dt>
+            <dt>חייבת למרכז (במלוא הסכום)</dt>
             <dd id="additionalExpensesTotal">0</dd>
-            <dt>הוצאות קורסים (יורד מהמטפלת)</dt>
+            <dt>הוצאות קורסים (75% מהסכום)</dt>
             <dd id="courseExpensesTotal">0</dd>
+        </dl>
+        <div class="summary-extra-toggle-row">
+            <button type="button" class="summary-extra-toggle" id="extraCalcsToggle" aria-expanded="true">
+                <span>חישובים נוספים</span>
+                <span class="summary-extra-chevron">▾</span>
+            </button>
+        </div>
+        <div id="extraCalcsPanel" class="summary-extra-panel">
             <div class="summary-settlement-block">
                 <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
                 <dd id="grossIndividualTotal">0</dd>
@@ -177,11 +185,11 @@
                 <dt>יתרה למטפלת (כמה המרכז חייב לי)</dt>
                 <dd id="remainingToTherapist">0</dd>
             </div>
-        </dl>
-        <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
-        <div class="grand" style="font-size:1rem;color:#e2e8f0;">
-            נטו אחרי קיזוז: <span id="netSettlementText">אין יתרה</span>
+            <div class="grand extra-grand">
+                נטו אחרי קיזוז: <span id="netSettlementText">אין יתרה</span>
+            </div>
         </div>
+        <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
     </div>
 
     <div class="card">
@@ -262,7 +270,7 @@
                 </div>
                 <div id="courseExpensesFields" class="is-hidden">
                     <table class="mini-table">
-                        <thead><tr><th>שם קורס</th><th>עלות</th><th></th></tr></thead>
+                        <thead><tr><th>שם קורס</th><th>מחיר קורס</th><th></th></tr></thead>
                         <tbody id="courseExpensesBody"></tbody>
                     </table>
                     <div class="mini-toolbar">
@@ -290,16 +298,16 @@
             <div class="extra-box">
                 <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
                     <input type="checkbox" id="additionalExpensesEnabled" />
-                    <label for="additionalExpensesEnabled">הוצאות נוספות</label>
+                    <label for="additionalExpensesEnabled">חייבת למרכז</label>
                 </div>
                 <div id="additionalExpensesFields" class="is-hidden">
                     <table class="mini-table">
-                        <thead><tr><th>שם הוצאה</th><th>עלות ההוצאה</th><th></th></tr></thead>
+                        <thead><tr><th>תיאור</th><th>סכום</th><th></th></tr></thead>
                         <tbody id="additionalExpensesBody"></tbody>
                     </table>
                     <div class="mini-toolbar">
                         <button type="button" class="btn-mini" id="addAdditionalExpense">+ הוצאה נוספת</button>
-                        <span class="mini-note">החזר זה מתווסף לסכום שהמרכז חייב למטפלת.</span>
+                        <span class="mini-note">כל סכום כאן מחושב במלואו כסכום שהמטפלת חייבת למרכז.</span>
                     </div>
                 </div>
             </div>

@@ -352,6 +352,54 @@
             padding-top: 0.75rem;
             border-top: 1px solid rgba(255,255,255,.2);
         }
+        .summary-extra-toggle-row {
+            margin-top: 0.9rem;
+            display: flex;
+            justify-content: flex-start;
+        }
+        .summary-extra-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: 1px solid rgba(236,253,245,.3);
+            border-radius: 999px;
+            background: rgba(255,255,255,.08);
+            color: #ecfdf5;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.28rem 0.7rem;
+        }
+        .summary-extra-toggle:hover {
+            background: rgba(255,255,255,.14);
+            border-color: rgba(236,253,245,.45);
+        }
+        .summary-extra-chevron {
+            font-size: 0.78rem;
+            line-height: 1;
+        }
+        .summary-extra-panel {
+            margin-top: 0.55rem;
+            padding: 0.65rem 0.7rem 0.45rem;
+            border: 1px solid rgba(236,253,245,.2);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.12);
+        }
+        .summary-extra-panel.is-collapsed {
+            display: none;
+        }
+        .summary-extra-panel .summary-settlement-block {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+        .grand.extra-grand {
+            margin-top: 0.55rem;
+            padding-top: 0.55rem;
+            border-top-color: rgba(255,255,255,.14);
+            font-size: 1rem;
+            color: #e2e8f0;
+        }
         .grand {
             margin-top: 1rem;
             padding-top: 1rem;

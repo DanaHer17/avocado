@@ -80,6 +80,8 @@
     const addCourseExpenseBtn = document.getElementById('addCourseExpense');
     const addExtraRoleBtn = document.getElementById('addExtraRole');
     const addAdditionalExpenseBtn = document.getElementById('addAdditionalExpense');
+    const extraCalcsToggleBtn = document.getElementById('extraCalcsToggle');
+    const extraCalcsPanel = document.getElementById('extraCalcsPanel');
     let currentPeriod = '';
     let saveTimer = null;
     let bulkDateTargetRow = null;
@@ -997,6 +999,7 @@ ${d.fullName || '—'}
         let totalSessions = 0;
         let totalUnpaid = 0;
         let totalCancellationPaidAmount = 0;
+        let grossIndividualTotal = 0;
         let individualTotal = 0;
         let paidToCenterTotal = 0;
         let paidToTherapistTotal = 0;
@@ -1038,6 +1041,7 @@ ${d.fullName || '—'}
             totalUnpaid += cancelUnpaid;
             totalCancellationPaidAmount += cancelPaidAmount;
             individualTotal += therapistShare;
+            grossIndividualTotal += grossRow;
             if (paidToCenter) {
                 paidToCenterTotal += grossRow;
                 paidToCenterApplied += centerShare;
@@ -1072,12 +1076,23 @@ ${d.fullName || '—'}
         const additionalExpensesTotal = extras.additionalExpensesEnabled
             ? extras.additionalExpenses.reduce((sum, x) => sum + toAmount(x.amount, 0), 0)
             : 0;
-        const courseExpensesTotal = extras.courseExpensesEnabled
+        const courseExpensesGrossTotal = extras.courseExpensesEnabled
             ? extras.courseExpenses.reduce((sum, x) => sum + toAmount(x.cost, 0), 0)
             : 0;
-        const grossIndividualTotal = (totalSessions * clientRate) + totalCancellationPaidAmount;
-        const centerTotal = Math.max(0, grossIndividualTotal - individualTotal) + languageEvalCenterTotal + courseExpensesTotal - additionalExpensesTotal;
-        const grandTotal = individualTotal + groupTotal + parentMeetingsTotal + languageEvalTherapistTotal + diagnosticsTotal + groupAssessmentsTotal + extraRolesTotal + additionalExpensesTotal - courseExpensesTotal;
+        const courseExpensesTotal = courseExpensesGrossTotal * 0.75;
+        // חובות "מטפלת חייבת למרכז" צריכים להשפיע רק על צד המרכז (יתרה למרכז),
+        // ולא להפחית את סה״כ למטפלת — אחרת הם נספרים פעמיים בנטו.
+        const centerTotal = Math.max(0, grossIndividualTotal - individualTotal)
+            + languageEvalCenterTotal
+            + courseExpensesTotal
+            + additionalExpensesTotal;
+        const grandTotal = individualTotal
+            + groupTotal
+            + parentMeetingsTotal
+            + languageEvalTherapistTotal
+            + diagnosticsTotal
+            + groupAssessmentsTotal
+            + extraRolesTotal;
         const remainingToCenter = Math.max(0, centerTotal - paidToCenterApplied);
         const remainingToTherapist = Math.max(0, grandTotal - paidToTherapistApplied);
         const netSettlement = remainingToTherapist - remainingToCenter;
@@ -1095,6 +1110,7 @@ ${d.fullName || '—'}
             groupAssessmentsTotal,
             extraRolesTotal,
             additionalExpensesTotal,
+            courseExpensesGrossTotal,
             courseExpensesTotal,
             grossIndividualTotal,
             centerTotal,
@@ -1202,8 +1218,9 @@ ${d.fullName || '—'}
         aoa.push(['אבחונים למטפלת (₪)', sum.diagnosticsTotal]);
         aoa.push(['מפגשי הערכה לילדי קבוצה (₪)', sum.groupAssessmentsTotal]);
         aoa.push(['תפקידים נוספים למטפלת (₪)', sum.extraRolesTotal]);
-        aoa.push(['הוצאות נוספות (₪)', sum.additionalExpensesTotal]);
-        aoa.push(['הוצאות קורסים (₪)', sum.courseExpensesTotal]);
+        aoa.push(['חייבת למרכז (₪)', sum.additionalExpensesTotal]);
+        aoa.push(['הוצאות קורסים - מחיר מלא (₪)', sum.courseExpensesGrossTotal]);
+        aoa.push(['הוצאות קורסים - מחושב 75% (₪)', sum.courseExpensesTotal]);
         aoa.push(['מדריכת קבוצה?', sum.group.enabled ? 'כן' : 'לא']);
         aoa.push(['תעריף קבוצה', sum.group.rate, 'ילדים בקבוצה (לתיעוד)', sum.group.children, 'מפגשי קבוצה', sum.group.sessions]);
         aoa.push(['נוסחת קבוצה', 'תעריף × מפגשים (ללא כפל ילדים)']);
@@ -1247,9 +1264,10 @@ ${d.fullName || '—'}
         if (sum.extras.courseExpensesEnabled && sum.extras.courseExpenses.length) {
             aoa.push([]);
             aoa.push(['הוצאות קורסים']);
-            aoa.push(['שם קורס', 'עלות']);
+            aoa.push(['שם קורס', 'מחיר מלא', 'מחושב 75%']);
             sum.extras.courseExpenses.forEach((x) => {
-                aoa.push([x.course, x.cost]);
+                const full = toAmount(x.cost, 0);
+                aoa.push([x.course, full, full * 0.75]);
             });
         }
         if (sum.extras.extraRoleEnabled && sum.extras.extraRoles.length) {
@@ -1262,8 +1280,8 @@ ${d.fullName || '—'}
         }
         if (sum.extras.additionalExpensesEnabled && sum.extras.additionalExpenses.length) {
             aoa.push([]);
-            aoa.push(['הוצאות נוספות']);
-            aoa.push(['שם הוצאה', 'עלות ההוצאה']);
+            aoa.push(['חייבת למרכז']);
+            aoa.push(['תיאור', 'סכום']);
             sum.extras.additionalExpenses.forEach((x) => {
                 aoa.push([x.name, x.amount]);
             });
@@ -1327,8 +1345,8 @@ ${d.fullName || '—'}
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
             `<strong>מפגשי הערכה לילדי קבוצה:</strong> ${sum.groupAssessmentsTotal} ₪<br>` +
             `<strong>תפקידים נוספים למטפלת:</strong> ${sum.extraRolesTotal} ₪<br>` +
-            `<strong>הוצאות נוספות (החזר למטפלת):</strong> ${sum.additionalExpensesTotal} ₪<br>` +
-            `<strong>הוצאות קורסים (יורד מהמטפלת):</strong> ${sum.courseExpensesTotal} ₪<br>` +
+            `<strong>חייבת למרכז (במלוא הסכום):</strong> ${sum.additionalExpensesTotal} ₪<br>` +
+            `<strong>הוצאות קורסים (מחיר מלא):</strong> ${sum.courseExpensesGrossTotal} ₪ &nbsp;|&nbsp; <strong>מחושב 75%:</strong> ${sum.courseExpensesTotal} ₪<br>` +
             `<strong>קבוצה:</strong> ${sum.group.enabled ? 'כן' : 'לא'}<br>` +
             `${sum.group.enabled ? `<strong>תעריף קבוצה:</strong> ${sum.group.rate} ₪ &nbsp;|&nbsp; <strong>ילדים:</strong> ${sum.group.children} &nbsp;|&nbsp; <strong>מפגשים:</strong> ${sum.group.sessions}<br><strong>נוסחה:</strong> תעריף × מפגשים (ללא כפל ילדים)<br><strong>תאריכי קבוצה:</strong> ${escapeHtml((sum.group.dates || []).filter(Boolean).join(', '))}<br><strong>סה״כ קבוצה:</strong> ${sum.groupTotal} ₪<br>` : ''}` +
             `<strong>סה״כ למטפלת:</strong> ${sum.grandTotal} ₪</p>` +
@@ -1822,6 +1840,15 @@ ${d.fullName || '—'}
         addRow();
         persist();
     });
+
+    if (extraCalcsToggleBtn && extraCalcsPanel) {
+        extraCalcsToggleBtn.addEventListener('click', () => {
+            const collapsed = extraCalcsPanel.classList.toggle('is-collapsed');
+            extraCalcsToggleBtn.setAttribute('aria-expanded', String(!collapsed));
+            const chev = extraCalcsToggleBtn.querySelector('.summary-extra-chevron');
+            if (chev) chev.textContent = collapsed ? '▸' : '▾';
+        });
+    }
 
     ['baseSalary', 'clientRate', 'meetingBonus'].forEach(id => {
         const el = document.getElementById(id);
