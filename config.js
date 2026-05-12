@@ -26,6 +26,11 @@ window.AVOCADO_CONFIG = {
             bankName: 'שם בנק',
             branchNumber: '000',
             accountNumber: '0000000'
+        },
+        parentMeetings: {
+            halfHourMinutes: 30,
+            halfHourPrice: 150,
+            fullMinutes: 45
         }
     }
 };

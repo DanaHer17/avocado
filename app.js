@@ -19,6 +19,10 @@
         branchNumber: '705',
         accountNumber: '9800164'
     };
+    const PARENT_MEETING_DEFAULTS = DEFAULTS.parentMeetings || {};
+    const PARENT_MEETING_HALF_MINUTES = PARENT_MEETING_DEFAULTS.halfHourMinutes || 30;
+    const PARENT_MEETING_FULL_MINUTES = PARENT_MEETING_DEFAULTS.fullMinutes || 45;
+    const PARENT_MEETING_HALF_PRICE = PARENT_MEETING_DEFAULTS.halfHourPrice || 150;
     /** מספר תאי תאריך בהתחלה לשורה חדשה (מוסיפים עוד עם «+ תאריך») */
     const INITIAL_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.initialDateSlots) || 1;
     const MAX_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.maxDateSlots) || 31;
@@ -349,8 +353,25 @@
         return Math.max(0, n);
     }
 
+    function normalizeParentMeetingDuration(value) {
+        const n = Number(value);
+        return n === PARENT_MEETING_HALF_MINUTES ? PARENT_MEETING_HALF_MINUTES : PARENT_MEETING_FULL_MINUTES;
+    }
+
+    function parentMeetingDurationLabel(duration) {
+        return normalizeParentMeetingDuration(duration) === PARENT_MEETING_HALF_MINUTES
+            ? `${PARENT_MEETING_HALF_MINUTES} דקות`
+            : `${PARENT_MEETING_FULL_MINUTES} דקות`;
+    }
+
+    function parentMeetingTherapistAmount(meeting, rate) {
+        return normalizeParentMeetingDuration(meeting && meeting.duration) === PARENT_MEETING_HALF_MINUTES
+            ? PARENT_MEETING_HALF_PRICE
+            : rate;
+    }
+
     function wireMiniRowInputs(tr) {
-        tr.querySelectorAll('input').forEach((inp) => {
+        tr.querySelectorAll('input, select').forEach((inp) => {
             inp.addEventListener('input', schedulePersist);
             inp.addEventListener('change', schedulePersist);
         });
@@ -365,9 +386,16 @@
 
     function addParentMeetingRow(data) {
         const d = data || {};
+        const duration = normalizeParentMeetingDuration(d.duration);
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><input type="text" class="pm-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
             <td><input type="date" class="pm-date" value="${escapeAttr(d.date)}" /></td>
+            <td>
+                <select class="pm-duration">
+                    <option value="${PARENT_MEETING_FULL_MINUTES}" ${duration === PARENT_MEETING_FULL_MINUTES ? 'selected' : ''}>${PARENT_MEETING_FULL_MINUTES} דקות</option>
+                    <option value="${PARENT_MEETING_HALF_MINUTES}" ${duration === PARENT_MEETING_HALF_MINUTES ? 'selected' : ''}>${PARENT_MEETING_HALF_MINUTES} דקות</option>
+                </select>
+            </td>
             <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
         parentMeetingsBody.appendChild(tr);
         wireMiniRowInputs(tr);
@@ -440,7 +468,8 @@
     function collectExtrasState() {
         const parentMeetings = Array.from(parentMeetingsBody.querySelectorAll('tr')).map((tr) => ({
             child: tr.querySelector('.pm-child')?.value.trim() || '',
-            date: tr.querySelector('.pm-date')?.value || ''
+            date: tr.querySelector('.pm-date')?.value || '',
+            duration: normalizeParentMeetingDuration(tr.querySelector('.pm-duration')?.value)
         }));
         const languageEvaluations = Array.from(languageEvalBody.querySelectorAll('tr')).map((tr) => ({
             child: tr.querySelector('.le-child')?.value.trim() || '',
@@ -1054,10 +1083,11 @@ ${d.fullName || '—'}
         const g = collectGroupState();
         const extras = collectExtrasState();
         const groupTotal = g.enabled ? (g.rate * g.sessions) : 0;
-        const parentMeetingsCount = extras.parentMeetingsEnabled
-            ? extras.parentMeetings.filter((x) => x.child || x.date).length
+        const parentMeetingsTotal = extras.parentMeetingsEnabled
+            ? extras.parentMeetings
+                .filter((x) => x.child || x.date)
+                .reduce((sum, x) => sum + parentMeetingTherapistAmount(x, rate), 0)
             : 0;
-        const parentMeetingsTotal = parentMeetingsCount * rate;
         const languageEvalTherapistTotal = extras.languageEvaluationsEnabled
             ? extras.languageEvaluations.reduce((sum, x) => sum + toAmount(x.therapist, 305), 0)
             : 0;
@@ -1231,10 +1261,15 @@ ${d.fullName || '—'}
         if (sum.extras.parentMeetingsEnabled && sum.extras.parentMeetings.length) {
             aoa.push([]);
             aoa.push(['פגישות הורים']);
-            aoa.push(['שם ילד', 'תאריך', 'שכר למטפלת']);
+            aoa.push(['שם ילד', 'תאריך', 'משך', 'שכר למטפלת']);
             sum.extras.parentMeetings.forEach((x) => {
                 if (!x.child && !x.date) return;
-                aoa.push([x.child, x.date, sum.rate]);
+                aoa.push([
+                    x.child,
+                    x.date,
+                    parentMeetingDurationLabel(x.duration),
+                    parentMeetingTherapistAmount(x, sum.rate)
+                ]);
             });
         }
         if (sum.extras.languageEvaluationsEnabled && sum.extras.languageEvaluations.length) {
