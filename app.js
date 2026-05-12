@@ -1402,7 +1402,13 @@ ${d.fullName || '—'}
         const nextPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
         const store = readStore();
-        const currentFormNames = extractTemplateNames(collectState().rows);
+        const sourcePeriod = currentPeriod || current;
+        const currentSnapshot = collectState();
+        currentSnapshot.period = sourcePeriod;
+        store.reportsByPeriod[sourcePeriod] = currentSnapshot;
+        store.patientTemplate = extractTemplateNames(currentSnapshot.rows);
+
+        const currentFormNames = extractTemplateNames(currentSnapshot.rows);
         const templateNames = Array.isArray(store.patientTemplate) ? store.patientTemplate : [];
         const names = currentFormNames.length ? currentFormNames : templateNames;
         if (!names.length) {
@@ -1410,34 +1416,27 @@ ${d.fullName || '—'}
             return;
         }
 
-        if (store.reportsByPeriod[nextPeriod]) {
-            periodInput.value = nextPeriod;
-            load();
-            saveHint.textContent = 'עברנו לדוח קיים של החודש הבא';
-            saveHint.classList.add('saved');
-            clearTimeout(saveTimer);
-            saveTimer = setTimeout(() => {
-                saveHint.textContent = '';
-                saveHint.classList.remove('saved');
-            }, 2500);
-            return;
-        }
-
         const baseSalary = document.getElementById('baseSalary').value;
         const clientRate = document.getElementById('clientRate').value;
         const meetingBonus = document.getElementById('meetingBonus').checked;
-        const newReport = {
-            period: nextPeriod,
-            baseSalary,
-            clientRate,
-            therapistRole: activeRole(),
-            sessionTypes: collectSessionTypes(),
-            therapistPaymentDetails: collectTherapistPaymentDetails(),
-            meetingBonus,
-            group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
-            extras: emptyExtrasState(),
-            rows: rowsFromTemplate(names)
-        };
+        const existingReport = store.reportsByPeriod[nextPeriod];
+        const newReport = existingReport
+            ? Object.assign({}, existingReport, {
+                period: nextPeriod,
+                rows: rowsFromTemplate(names)
+            })
+            : {
+                period: nextPeriod,
+                baseSalary,
+                clientRate,
+                therapistRole: activeRole(),
+                sessionTypes: collectSessionTypes(),
+                therapistPaymentDetails: collectTherapistPaymentDetails(),
+                meetingBonus,
+                group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+                extras: emptyExtrasState(),
+                rows: rowsFromTemplate(names)
+            };
         store.reportsByPeriod[nextPeriod] = newReport;
         store.patientTemplate = extractTemplateNames(newReport.rows);
         writeStore(store);
@@ -1445,7 +1444,9 @@ ${d.fullName || '—'}
         periodInput.value = nextPeriod;
         applyState(newReport);
         currentPeriod = nextPeriod;
-        saveHint.textContent = 'נוצר דוח חדש לחודש הבא';
+        saveHint.textContent = existingReport
+            ? `עודכנו ${names.length} שמות בדוח של החודש הבא`
+            : `נוצר דוח חדש לחודש הבא עם ${names.length} שמות`;
         saveHint.classList.add('saved');
         clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
