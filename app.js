@@ -77,6 +77,9 @@
     const additionalExpensesEnabledInput = document.getElementById('additionalExpensesEnabled');
     const additionalExpensesFields = document.getElementById('additionalExpensesFields');
     const additionalExpensesBody = document.getElementById('additionalExpensesBody');
+    const centerOwesTherapistEnabledInput = document.getElementById('centerOwesTherapistEnabled');
+    const centerOwesTherapistFields = document.getElementById('centerOwesTherapistFields');
+    const centerOwesTherapistBody = document.getElementById('centerOwesTherapistBody');
     const addParentMeetingBtn = document.getElementById('addParentMeeting');
     const addLanguageEvalBtn = document.getElementById('addLanguageEval');
     const addDiagnosticBtn = document.getElementById('addDiagnostic');
@@ -84,6 +87,7 @@
     const addCourseExpenseBtn = document.getElementById('addCourseExpense');
     const addExtraRoleBtn = document.getElementById('addExtraRole');
     const addAdditionalExpenseBtn = document.getElementById('addAdditionalExpense');
+    const addCenterOwesTherapistBtn = document.getElementById('addCenterOwesTherapist');
     const extraCalcsToggleBtn = document.getElementById('extraCalcsToggle');
     const extraCalcsPanel = document.getElementById('extraCalcsPanel');
     let currentPeriod = '';
@@ -327,6 +331,10 @@
         }
     }
 
+    function toggleCenterOwesTherapistVisibility() {
+        centerOwesTherapistFields.classList.toggle('is-hidden', !centerOwesTherapistEnabledInput.checked);
+    }
+
     function toggleParentMeetingsVisibility() {
         parentMeetingsFields.classList.toggle('is-hidden', !parentMeetingsEnabledInput.checked);
     }
@@ -465,6 +473,16 @@
         wireMiniRowInputs(tr);
     }
 
+    function addCenterOwesTherapistRow(data) {
+        const d = data || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="text" class="co-name" value="${escapeAttr(d.name)}" placeholder="תיאור החוב" /></td>
+            <td><input type="number" min="0" step="1" class="co-amount" value="${toAmount(d.amount, 0)}" /></td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        centerOwesTherapistBody.appendChild(tr);
+        wireMiniRowInputs(tr);
+    }
+
     function collectExtrasState() {
         const parentMeetings = Array.from(parentMeetingsBody.querySelectorAll('tr')).map((tr) => ({
             child: tr.querySelector('.pm-child')?.value.trim() || '',
@@ -499,6 +517,10 @@
             name: tr.querySelector('.ae-name')?.value.trim() || '',
             amount: toAmount(tr.querySelector('.ae-amount')?.value, 0)
         }));
+        const centerOwesTherapist = Array.from(centerOwesTherapistBody.querySelectorAll('tr')).map((tr) => ({
+            name: tr.querySelector('.co-name')?.value.trim() || '',
+            amount: toAmount(tr.querySelector('.co-amount')?.value, 0)
+        }));
         return {
             parentMeetings,
             languageEvaluations,
@@ -513,7 +535,9 @@
             extraRoleEnabled: !!extraRoleEnabledInput.checked,
             extraRoles,
             additionalExpensesEnabled: !!additionalExpensesEnabledInput.checked,
-            additionalExpenses
+            additionalExpenses,
+            centerOwesTherapistEnabled: !!centerOwesTherapistEnabledInput.checked,
+            centerOwesTherapist
         };
     }
 
@@ -526,6 +550,7 @@
         courseExpensesBody.innerHTML = '';
         extraRolesBody.innerHTML = '';
         additionalExpensesBody.innerHTML = '';
+        centerOwesTherapistBody.innerHTML = '';
 
         const p = Array.isArray(e.parentMeetings) ? e.parentMeetings : [];
         const l = Array.isArray(e.languageEvaluations) ? e.languageEvaluations : [];
@@ -534,6 +559,7 @@
         const c = Array.isArray(e.courseExpenses) ? e.courseExpenses : [];
         const er = Array.isArray(e.extraRoles) ? e.extraRoles : [];
         const ae = Array.isArray(e.additionalExpenses) ? e.additionalExpenses : [];
+        const co = Array.isArray(e.centerOwesTherapist) ? e.centerOwesTherapist : [];
         parentMeetingsEnabledInput.checked = e.parentMeetingsEnabled != null ? !!e.parentMeetingsEnabled : p.length > 0;
         languageEvaluationsEnabledInput.checked = e.languageEvaluationsEnabled != null ? !!e.languageEvaluationsEnabled : l.length > 0;
         diagnosticsEnabledInput.checked = e.diagnosticsEnabled != null ? !!e.diagnosticsEnabled : d.length > 0;
@@ -541,6 +567,7 @@
         courseExpensesEnabledInput.checked = e.courseExpensesEnabled != null ? !!e.courseExpensesEnabled : c.length > 0;
         extraRoleEnabledInput.checked = e.extraRoleEnabled != null ? !!e.extraRoleEnabled : er.length > 0;
         additionalExpensesEnabledInput.checked = e.additionalExpensesEnabled != null ? !!e.additionalExpensesEnabled : ae.length > 0;
+        centerOwesTherapistEnabledInput.checked = e.centerOwesTherapistEnabled != null ? !!e.centerOwesTherapistEnabled : co.length > 0;
         toggleParentMeetingsVisibility();
         toggleLanguageEvaluationsVisibility();
         toggleDiagnosticsVisibility();
@@ -548,6 +575,7 @@
         toggleCourseExpensesVisibility();
         toggleExtraRoleVisibility();
         toggleAdditionalExpensesVisibility();
+        toggleCenterOwesTherapistVisibility();
 
         p.forEach(addParentMeetingRow);
         l.forEach(addLanguageEvalRow);
@@ -556,6 +584,7 @@
         c.forEach(addCourseExpenseRow);
         er.forEach(addExtraRoleRow);
         ae.forEach(addAdditionalExpenseRow);
+        co.forEach(addCenterOwesTherapistRow);
     }
 
     function wireDateRow(tr) {
@@ -974,6 +1003,8 @@ ${d.fullName || '—'}
             extraRoles: [],
             additionalExpensesEnabled: false,
             additionalExpenses: [],
+            centerOwesTherapistEnabled: false,
+            centerOwesTherapist: [],
             courseExpenses: []
         };
     }
@@ -1106,6 +1137,9 @@ ${d.fullName || '—'}
         const additionalExpensesTotal = extras.additionalExpensesEnabled
             ? extras.additionalExpenses.reduce((sum, x) => sum + toAmount(x.amount, 0), 0)
             : 0;
+        const centerOwesTherapistTotal = extras.centerOwesTherapistEnabled
+            ? extras.centerOwesTherapist.reduce((sum, x) => sum + toAmount(x.amount, 0), 0)
+            : 0;
         const courseExpensesGrossTotal = extras.courseExpensesEnabled
             ? extras.courseExpenses.reduce((sum, x) => sum + toAmount(x.cost, 0), 0)
             : 0;
@@ -1122,7 +1156,8 @@ ${d.fullName || '—'}
             + languageEvalTherapistTotal
             + diagnosticsTotal
             + groupAssessmentsTotal
-            + extraRolesTotal;
+            + extraRolesTotal
+            + centerOwesTherapistTotal;
         const remainingToCenter = Math.max(0, centerTotal - paidToCenterApplied);
         const remainingToTherapist = Math.max(0, grandTotal - paidToTherapistApplied);
         const netSettlement = remainingToTherapist - remainingToCenter;
@@ -1140,6 +1175,7 @@ ${d.fullName || '—'}
             groupAssessmentsTotal,
             extraRolesTotal,
             additionalExpensesTotal,
+            centerOwesTherapistTotal,
             courseExpensesGrossTotal,
             courseExpensesTotal,
             grossIndividualTotal,
@@ -1249,6 +1285,7 @@ ${d.fullName || '—'}
         aoa.push(['מפגשי הערכה לילדי קבוצה (₪)', sum.groupAssessmentsTotal]);
         aoa.push(['תפקידים נוספים למטפלת (₪)', sum.extraRolesTotal]);
         aoa.push(['חייבת למרכז (₪)', sum.additionalExpensesTotal]);
+        aoa.push(['המרכז חייב למטפלת (₪)', sum.centerOwesTherapistTotal]);
         aoa.push(['הוצאות קורסים - מחיר מלא (₪)', sum.courseExpensesGrossTotal]);
         aoa.push(['הוצאות קורסים - מחושב 75% (₪)', sum.courseExpensesTotal]);
         aoa.push(['מדריכת קבוצה?', sum.group.enabled ? 'כן' : 'לא']);
@@ -1321,6 +1358,14 @@ ${d.fullName || '—'}
                 aoa.push([x.name, x.amount]);
             });
         }
+        if (sum.extras.centerOwesTherapistEnabled && sum.extras.centerOwesTherapist.length) {
+            aoa.push([]);
+            aoa.push(['המרכז חייב למטפלת']);
+            aoa.push(['תיאור', 'סכום']);
+            sum.extras.centerOwesTherapist.forEach((x) => {
+                aoa.push([x.name, x.amount]);
+            });
+        }
 
         if (typeof XLSX === 'undefined') {
             alert('טעינת Excel נכשלה (בדקי חיבור לאינטרנט ורענני את הדף).');
@@ -1381,6 +1426,7 @@ ${d.fullName || '—'}
             `<strong>מפגשי הערכה לילדי קבוצה:</strong> ${sum.groupAssessmentsTotal} ₪<br>` +
             `<strong>תפקידים נוספים למטפלת:</strong> ${sum.extraRolesTotal} ₪<br>` +
             `<strong>חייבת למרכז (במלוא הסכום):</strong> ${sum.additionalExpensesTotal} ₪<br>` +
+            `<strong>המרכז חייב למטפלת (במלוא הסכום):</strong> ${sum.centerOwesTherapistTotal} ₪<br>` +
             `<strong>הוצאות קורסים (מחיר מלא):</strong> ${sum.courseExpensesGrossTotal} ₪ &nbsp;|&nbsp; <strong>מחושב 75%:</strong> ${sum.courseExpensesTotal} ₪<br>` +
             `<strong>קבוצה:</strong> ${sum.group.enabled ? 'כן' : 'לא'}<br>` +
             `${sum.group.enabled ? `<strong>תעריף קבוצה:</strong> ${sum.group.rate} ₪ &nbsp;|&nbsp; <strong>ילדים:</strong> ${sum.group.children} &nbsp;|&nbsp; <strong>מפגשים:</strong> ${sum.group.sessions}<br><strong>נוסחה:</strong> תעריף × מפגשים (ללא כפל ילדים)<br><strong>תאריכי קבוצה:</strong> ${escapeHtml((sum.group.dates || []).filter(Boolean).join(', '))}<br><strong>סה״כ קבוצה:</strong> ${sum.groupTotal} ₪<br>` : ''}` +
@@ -1816,6 +1862,7 @@ ${d.fullName || '—'}
         document.getElementById('groupAssessmentsTotal').textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
         document.getElementById('extraRolesTotal').textContent = sum.extraRolesTotal.toLocaleString('he-IL');
         document.getElementById('additionalExpensesTotal').textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
+        document.getElementById('centerOwesTherapistTotal').textContent = sum.centerOwesTherapistTotal.toLocaleString('he-IL');
         document.getElementById('courseExpensesTotal').textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
         document.getElementById('grossIndividualTotal').textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
         document.getElementById('centerTotal').textContent = sum.centerTotal.toLocaleString('he-IL');
@@ -2032,6 +2079,18 @@ ${d.fullName || '—'}
         if (!additionalExpensesEnabledInput.checked) {
             additionalExpensesEnabledInput.checked = true;
             toggleAdditionalExpensesVisibility();
+        }
+        schedulePersist();
+    });
+    centerOwesTherapistEnabledInput.addEventListener('change', () => {
+        toggleCenterOwesTherapistVisibility();
+        schedulePersist();
+    });
+    addCenterOwesTherapistBtn.addEventListener('click', () => {
+        addCenterOwesTherapistRow({});
+        if (!centerOwesTherapistEnabledInput.checked) {
+            centerOwesTherapistEnabledInput.checked = true;
+            toggleCenterOwesTherapistVisibility();
         }
         schedulePersist();
     });

@@ -161,6 +161,8 @@
             <dd id="extraRolesTotal">0</dd>
             <dt>חייבת למרכז (במלוא הסכום)</dt>
             <dd id="additionalExpensesTotal">0</dd>
+            <dt>המרכז חייב למטפלת (במלוא הסכום)</dt>
+            <dd id="centerOwesTherapistTotal">0</dd>
             <dt>הוצאות קורסים (75% מהסכום)</dt>
             <dd id="courseExpensesTotal">0</dd>
         </dl>
@@ -308,6 +310,23 @@
                     <div class="mini-toolbar">
                         <button type="button" class="btn-mini" id="addAdditionalExpense">+ הוצאה נוספת</button>
                         <span class="mini-note">כל סכום כאן מחושב במלואו כסכום שהמטפלת חייבת למרכז.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="centerOwesTherapistEnabled" />
+                    <label for="centerOwesTherapistEnabled">המרכז חייב למטפלת</label>
+                </div>
+                <div id="centerOwesTherapistFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>תיאור</th><th>סכום</th><th></th></tr></thead>
+                        <tbody id="centerOwesTherapistBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addCenterOwesTherapist">+ חוב מהמרכז</button>
+                        <span class="mini-note">כל סכום כאן מחושב במלואו כסכום שהמרכז חייב למטפלת (למשל יתרה מהחודש הקודם).</span>
                     </div>
                 </div>
             </div>
