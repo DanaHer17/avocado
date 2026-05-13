@@ -299,7 +299,7 @@
         }
         .extras-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
             gap: 0.9rem;
             margin-top: 0.75rem;
         }
@@ -308,6 +308,7 @@
             border-radius: 10px;
             padding: 0.65rem;
             background: #fcfffe;
+            min-width: 0;
         }
         .extra-box h3 {
             margin: 0 0 0.45rem;
@@ -316,16 +317,40 @@
         }
         .mini-table {
             width: 100%;
+            max-width: 100%;
             border-collapse: collapse;
             font-size: 0.77rem;
+            table-layout: fixed;
         }
         .mini-table th, .mini-table td {
             border: 1px solid var(--border);
             padding: 0.25rem;
             text-align: center;
+            vertical-align: middle;
+            word-break: break-word;
         }
-        .mini-table input { width: 100%; min-width: 0; font-size: 0.75rem; padding: 0.25rem; }
-        .mini-toolbar { margin-top: 0.4rem; display: flex; gap: 0.35rem; align-items: center; }
+        .mini-table input,
+        .mini-table select {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            font-size: 0.75rem;
+            padding: 0.25rem;
+        }
+        .extra-box > [id$="Fields"] {
+            min-width: 0;
+            max-width: 100%;
+        }
+        .mini-toolbar {
+            margin-top: 0.4rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            align-items: flex-start;
+        }
+        .mini-toolbar .mini-note {
+            flex: 1 1 100%;
+        }
         .mini-note { color: var(--muted); font-size: 0.74rem; margin-top: 0.25rem; }
         .is-hidden { display: none !important; }
         .summary {
@@ -407,9 +432,24 @@
             font-size: 1.15rem;
         }
         .grand span { color: #fde047; }
+        @media (max-width: 1040px) {
+            .extras-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         @media (max-width: 900px) {
             .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            table { min-width: 520px; }
+            #patientTable,
+            .session-type-table {
+                min-width: 520px;
+            }
+        }
+        @media (max-width: 720px) {
+            body { padding: 0.75rem 0.75rem 2rem; }
+            .card { padding: 1rem; }
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
         }
         .export-bar {
             display: flex;
