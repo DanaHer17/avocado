@@ -30,6 +30,11 @@
     const patientTableWrap = document.getElementById('patientTableWrap');
     const saveHint = document.getElementById('saveHint');
     const periodInput = document.getElementById('period');
+    const baseSalaryInput = document.getElementById('baseSalary');
+    const clientRateInput = document.getElementById('clientRate');
+    const meetingBonusInput = document.getElementById('meetingBonus');
+    /** זמן המתנה לפני כתיבת localStorage אחרי הקלדה — מפחית עומס וחריגות מכסה בכרום */
+    const PERSIST_DEBOUNCE_MS = 400;
     const therapistRoleInput = document.getElementById('therapistRole');
     const roleSessionTypesCard = document.getElementById('roleSessionTypesCard');
     const sessionTypesBody = document.getElementById('sessionTypesBody');
@@ -92,11 +97,37 @@
     const extraCalcsPanel = document.getElementById('extraCalcsPanel');
     let currentPeriod = '';
     let saveTimer = null;
+    let persistDebounceTimer = null;
     let bulkDateTargetRow = null;
 
+    const summaryEls = {
+        effectiveRate: document.getElementById('effectiveRate'),
+        totalBillable: document.getElementById('totalBillable'),
+        totalUnpaidCancels: document.getElementById('totalUnpaidCancels'),
+        individualTotal: document.getElementById('individualTotal'),
+        groupTotal: document.getElementById('groupTotal'),
+        parentMeetingsTotal: document.getElementById('parentMeetingsTotal'),
+        languageEvalTherapistTotal: document.getElementById('languageEvalTherapistTotal'),
+        languageEvalCenterTotal: document.getElementById('languageEvalCenterTotal'),
+        diagnosticsTotal: document.getElementById('diagnosticsTotal'),
+        groupAssessmentsTotal: document.getElementById('groupAssessmentsTotal'),
+        extraRolesTotal: document.getElementById('extraRolesTotal'),
+        additionalExpensesTotal: document.getElementById('additionalExpensesTotal'),
+        centerOwesTherapistTotal: document.getElementById('centerOwesTherapistTotal'),
+        courseExpensesTotal: document.getElementById('courseExpensesTotal'),
+        grossIndividualTotal: document.getElementById('grossIndividualTotal'),
+        centerTotal: document.getElementById('centerTotal'),
+        grandTotal: document.getElementById('grandTotal'),
+        paidToCenterTotal: document.getElementById('paidToCenterTotal'),
+        paidToTherapistTotal: document.getElementById('paidToTherapistTotal'),
+        remainingToCenter: document.getElementById('remainingToCenter'),
+        remainingToTherapist: document.getElementById('remainingToTherapist'),
+        netSettlementText: document.getElementById('netSettlementText')
+    };
+
     function effectiveRate() {
-        const base = parseFloat(document.getElementById('baseSalary').value) || 0;
-        const bonus = document.getElementById('meetingBonus').checked ? 5 : 0;
+        const base = parseFloat(baseSalaryInput?.value) || 0;
+        const bonus = meetingBonusInput?.checked ? 5 : 0;
         return base + bonus;
     }
 
@@ -685,7 +716,7 @@
     function sessionBreakdownFromRow(rd, opts) {
         const options = opts || {};
         const role = options.role || activeRole();
-        const clientRate = Math.max(0, parseFloat(options.clientRate) || parseFloat(document.getElementById('clientRate').value) || 0);
+        const clientRate = Math.max(0, parseFloat(options.clientRate) || parseFloat(clientRateInput?.value) || 0);
         const therapistRate = Math.max(0, parseFloat(options.therapistRate) || effectiveRate());
         const stMap = options.sessionTypeMap || sessionTypeMapFrom(collectSessionTypes());
         const entries = normalizeSessionEntries(rd.sessionEntries, rd.dates, rd.sessions);
@@ -748,7 +779,7 @@
     }
 
     function rowBillingParts(rd) {
-        const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
+        const clientRate = parseFloat(clientRateInput?.value) || 0;
         const role = activeRole();
         const stMap = sessionTypeMapFrom(collectSessionTypes());
         const sessionsPart = sessionBreakdownFromRow(rd, {
@@ -921,13 +952,12 @@ ${d.fullName || '—'}
         const rows = Array.from(tbody.querySelectorAll('tr')).map(rowDataFromTr);
         return {
             period: periodInput.value,
-            baseSalary: document.getElementById('baseSalary').value,
-            clientRate: document.getElementById('clientRate').value,
+            baseSalary: baseSalaryInput?.value,
+            clientRate: clientRateInput?.value,
             therapistRole: activeRole(),
             sessionTypes: collectSessionTypes(),
             therapistPaymentDetails: collectTherapistPaymentDetails(),
-            meetingBonus: document.getElementById('meetingBonus').checked,
-            group: collectGroupState(),
+            meetingBonus: meetingBonusInput?.checked,
             extras: collectExtrasState(),
             rows
         };
@@ -935,14 +965,14 @@ ${d.fullName || '—'}
 
     function applyState(s) {
         if (!s || typeof s !== 'object') return;
-        if (s.period != null) document.getElementById('period').value = s.period;
-        if (s.baseSalary != null) document.getElementById('baseSalary').value = String(s.baseSalary);
-        if (s.clientRate != null) document.getElementById('clientRate').value = String(s.clientRate);
+        if (s.period != null) periodInput.value = s.period;
+        if (s.baseSalary != null) baseSalaryInput.value = String(s.baseSalary);
+        if (s.clientRate != null) clientRateInput.value = String(s.clientRate);
         therapistRoleInput.value = s.therapistRole || ROLE_SPEECH;
         applySessionTypes(s.sessionTypes);
         roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
         applyTherapistPaymentDetails(s.therapistPaymentDetails);
-        document.getElementById('meetingBonus').checked = !!s.meetingBonus;
+        meetingBonusInput.checked = !!s.meetingBonus;
         const g = s.group || {};
         groupEnabledInput.checked = !!g.enabled;
         groupRateInput.value = String(g.rate == null ? 0 : g.rate);
@@ -1052,7 +1082,7 @@ ${d.fullName || '—'}
 
     function getSummary() {
         const rate = effectiveRate();
-        const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
+        const clientRate = parseFloat(clientRateInput?.value) || 0;
         const role = activeRole();
         const stMap = sessionTypeMapFrom(collectSessionTypes());
         let totalBillable = 0;
@@ -1497,9 +1527,9 @@ ${d.fullName || '—'}
             return;
         }
 
-        const baseSalary = document.getElementById('baseSalary').value;
-        const clientRate = document.getElementById('clientRate').value;
-        const meetingBonus = document.getElementById('meetingBonus').checked;
+        const baseSalary = baseSalaryInput?.value;
+        const clientRate = clientRateInput?.value;
+        const meetingBonus = meetingBonusInput?.checked;
         const existingReport = store.reportsByPeriod[nextPeriod];
         const newReport = existingReport
             ? Object.assign({}, existingReport, {
@@ -1581,6 +1611,8 @@ ${d.fullName || '—'}
     }
 
     function persist() {
+        clearTimeout(persistDebounceTimer);
+        persistDebounceTimer = null;
         try {
             const state = collectState();
             const period = state.period || defaultPeriodValue();
@@ -1601,9 +1633,20 @@ ${d.fullName || '—'}
         }
     }
 
+    function flushPersist() {
+        if (persistDebounceTimer === null) return;
+        clearTimeout(persistDebounceTimer);
+        persistDebounceTimer = null;
+        persist();
+    }
+
     function schedulePersist() {
         calculate();
-        persist();
+        clearTimeout(persistDebounceTimer);
+        persistDebounceTimer = setTimeout(() => {
+            persistDebounceTimer = null;
+            persist();
+        }, PERSIST_DEBOUNCE_MS);
     }
 
     function normalizeDatesArray(dates, fallbackSessions) {
@@ -1826,8 +1869,8 @@ ${d.fullName || '—'}
         updateAllRowPaidStyles();
         updatePatientTableLayoutMode();
         const rate = effectiveRate();
-        const clientRate = parseFloat(document.getElementById('clientRate').value) || 0;
-        document.getElementById('effectiveRate').textContent = rate.toLocaleString('he-IL');
+        const clientRate = parseFloat(clientRateInput?.value) || 0;
+        summaryEls.effectiveRate.textContent = rate.toLocaleString('he-IL');
 
         tbody.querySelectorAll('tr').forEach(tr => {
             const rd = rowDataFromTr(tr);
@@ -1851,27 +1894,28 @@ ${d.fullName || '—'}
         });
 
         const sum = getSummary();
-        document.getElementById('totalBillable').textContent = sum.totalBillable.toLocaleString('he-IL');
-        document.getElementById('totalUnpaidCancels').textContent = sum.totalUnpaid.toLocaleString('he-IL');
-        document.getElementById('individualTotal').textContent = sum.individualTotal.toLocaleString('he-IL');
-        document.getElementById('groupTotal').textContent = sum.groupTotal.toLocaleString('he-IL');
-        document.getElementById('parentMeetingsTotal').textContent = sum.parentMeetingsTotal.toLocaleString('he-IL');
-        document.getElementById('languageEvalTherapistTotal').textContent = sum.languageEvalTherapistTotal.toLocaleString('he-IL');
-        document.getElementById('languageEvalCenterTotal').textContent = sum.languageEvalCenterTotal.toLocaleString('he-IL');
-        document.getElementById('diagnosticsTotal').textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
-        document.getElementById('groupAssessmentsTotal').textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
-        document.getElementById('extraRolesTotal').textContent = sum.extraRolesTotal.toLocaleString('he-IL');
-        document.getElementById('additionalExpensesTotal').textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
-        document.getElementById('centerOwesTherapistTotal').textContent = sum.centerOwesTherapistTotal.toLocaleString('he-IL');
-        document.getElementById('courseExpensesTotal').textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
-        document.getElementById('grossIndividualTotal').textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
-        document.getElementById('centerTotal').textContent = sum.centerTotal.toLocaleString('he-IL');
-        document.getElementById('grandTotal').textContent = sum.grandTotal.toLocaleString('he-IL');
-        document.getElementById('paidToCenterTotal').textContent = `${sum.paidToCenterTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToCenterApplied.toLocaleString('he-IL')})`;
-        document.getElementById('paidToTherapistTotal').textContent = `${sum.paidToTherapistTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToTherapistApplied.toLocaleString('he-IL')})`;
-        document.getElementById('remainingToCenter').textContent = sum.remainingToCenter.toLocaleString('he-IL');
-        document.getElementById('remainingToTherapist').textContent = sum.remainingToTherapist.toLocaleString('he-IL');
-        const netEl = document.getElementById('netSettlementText');
+        const els = summaryEls;
+        els.totalBillable.textContent = sum.totalBillable.toLocaleString('he-IL');
+        els.totalUnpaidCancels.textContent = sum.totalUnpaid.toLocaleString('he-IL');
+        els.individualTotal.textContent = sum.individualTotal.toLocaleString('he-IL');
+        els.groupTotal.textContent = sum.groupTotal.toLocaleString('he-IL');
+        els.parentMeetingsTotal.textContent = sum.parentMeetingsTotal.toLocaleString('he-IL');
+        els.languageEvalTherapistTotal.textContent = sum.languageEvalTherapistTotal.toLocaleString('he-IL');
+        els.languageEvalCenterTotal.textContent = sum.languageEvalCenterTotal.toLocaleString('he-IL');
+        els.diagnosticsTotal.textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
+        els.groupAssessmentsTotal.textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
+        els.extraRolesTotal.textContent = sum.extraRolesTotal.toLocaleString('he-IL');
+        els.additionalExpensesTotal.textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
+        els.centerOwesTherapistTotal.textContent = sum.centerOwesTherapistTotal.toLocaleString('he-IL');
+        els.courseExpensesTotal.textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
+        els.grossIndividualTotal.textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
+        els.centerTotal.textContent = sum.centerTotal.toLocaleString('he-IL');
+        els.grandTotal.textContent = sum.grandTotal.toLocaleString('he-IL');
+        els.paidToCenterTotal.textContent = `${sum.paidToCenterTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToCenterApplied.toLocaleString('he-IL')})`;
+        els.paidToTherapistTotal.textContent = `${sum.paidToTherapistTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToTherapistApplied.toLocaleString('he-IL')})`;
+        els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
+        els.remainingToTherapist.textContent = sum.remainingToTherapist.toLocaleString('he-IL');
+        const netEl = els.netSettlementText;
         if (sum.netSettlement > 0) {
             netEl.textContent = `המרכז חייב למטפלת ${sum.netSettlement.toLocaleString('he-IL')} ₪`;
         } else if (sum.netSettlement < 0) {
@@ -1894,12 +1938,12 @@ ${d.fullName || '—'}
             }
             applyState({
                 period: selectedPeriod,
-                baseSalary: document.getElementById('baseSalary').value,
-                clientRate: document.getElementById('clientRate').value,
+                baseSalary: baseSalaryInput?.value,
+                clientRate: clientRateInput?.value,
                 therapistRole: activeRole(),
                 sessionTypes: collectSessionTypes(),
                 therapistPaymentDetails: collectTherapistPaymentDetails(),
-                meetingBonus: document.getElementById('meetingBonus').checked,
+                meetingBonus: meetingBonusInput?.checked,
                 group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
                 extras: emptyExtrasState(),
                 rows: rowsFromTemplate(store.patientTemplate)
@@ -2247,7 +2291,14 @@ ${d.fullName || '—'}
     });
 
     load();
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') flushPersist();
+    });
+    window.addEventListener('pagehide', flushPersist);
+
     periodInput.addEventListener('change', () => {
+        flushPersist();
         if (currentPeriod && currentPeriod !== periodInput.value) {
             // Save current report before moving month.
             const snapshot = collectState();
