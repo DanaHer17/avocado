@@ -102,13 +102,21 @@
         }
         .scroll-x {
             width: 100%;
+            max-width: 100%;
+            min-width: 0;
             -webkit-overflow-scrolling: touch;
         }
-        .scroll-x.compact-table {
-            overflow-x: visible;
-        }
+        /* גלילה אופקית כשהטבלה רחבה מרוחב המסך (כולל מצב compact ללא ביטולים) */
+        .scroll-x.compact-table,
         .scroll-x.expanded-table {
             overflow-x: auto;
+        }
+        /* מיכל טבלת מטופלים — מאפשר כיווץ בתוך הכרטיס וגלילה במקום חיתוך */
+        #patientTableWrap {
+            min-width: 0;
+            margin-inline: -0.15rem;
+            padding-inline: 0.15rem;
+            overscroll-behavior-x: contain;
         }
         th, td {
             border: 1px solid var(--border);
@@ -432,6 +440,46 @@
             font-size: 1.15rem;
         }
         .grand span { color: #fde047; }
+        @media (max-width: 1100px) {
+            #patientTable {
+                min-width: 760px;
+            }
+            #patientTable .col-dates {
+                min-width: 9rem;
+                max-width: none;
+            }
+            #patientTable .col-name input {
+                min-width: 4.25rem;
+            }
+            #patientTable .cancel-cell {
+                min-width: 5rem;
+            }
+            #patientTable th,
+            #patientTable td {
+                padding: 0.3rem 0.28rem;
+                font-size: 0.78rem;
+            }
+            #patientTable .date-slot input[type="date"] {
+                min-width: 7rem;
+                font-size: 0.76rem;
+                padding: 0.2rem;
+            }
+            #patientTable .date-slot input.sess-date-legacy {
+                min-width: 4rem;
+            }
+            #patientTable .date-row-list {
+                gap: 0.3rem;
+            }
+            #patientTable .btn-mini,
+            #patientTable .btn-mini-alt {
+                font-size: 0.68rem;
+                padding: 0.22rem 0.38rem;
+            }
+            #patientTable .sess-type-select {
+                min-width: 5rem;
+                font-size: 0.72rem;
+            }
+        }
         @media (max-width: 1040px) {
             .extras-grid {
                 grid-template-columns: 1fr;
@@ -439,7 +487,9 @@
         }
         @media (max-width: 900px) {
             .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            #patientTable,
+            #patientTable {
+                min-width: 720px;
+            }
             .session-type-table {
                 min-width: 520px;
             }
