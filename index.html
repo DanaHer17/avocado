@@ -158,10 +158,43 @@
             <dd id="groupAssessmentsTotal">0</dd>
             <dt>תפקידים נוספים (למטפלת)</dt>
             <dd id="extraRolesTotal">0</dd>
+            <div class="summary-component-block is-hidden" id="extraRolesDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="extraRolesDetailToggle" data-panel="extraRolesDetailPanel" aria-expanded="false">
+                        <span>פירוט תפקידים</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="extraRolesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="extraRolesDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
             <dt>חייבת למרכז (במלוא הסכום)</dt>
             <dd id="additionalExpensesTotal">0</dd>
+            <div class="summary-component-block is-hidden" id="additionalExpensesDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="additionalExpensesDetailToggle" data-panel="additionalExpensesDetailPanel" aria-expanded="false">
+                        <span>פירוט חיוב למרכז</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="additionalExpensesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="additionalExpensesDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
             <dt>המרכז חייב למטפלת (במלוא הסכום)</dt>
             <dd id="centerOwesTherapistTotal">0</dd>
+            <div class="summary-component-block is-hidden" id="centerOwesTherapistDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="centerOwesTherapistDetailToggle" data-panel="centerOwesTherapistDetailPanel" aria-expanded="false">
+                        <span>פירוט חוב מהמרכז</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="centerOwesTherapistDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="centerOwesTherapistDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
             <dt>הוצאות קורסים (75% מהסכום)</dt>
             <dd id="courseExpensesTotal">0</dd>
         </dl>

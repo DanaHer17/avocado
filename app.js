@@ -122,7 +122,10 @@
         paidToTherapistTotal: document.getElementById('paidToTherapistTotal'),
         remainingToCenter: document.getElementById('remainingToCenter'),
         remainingToTherapist: document.getElementById('remainingToTherapist'),
-        netSettlementText: document.getElementById('netSettlementText')
+        netSettlementText: document.getElementById('netSettlementText'),
+        extraRolesDetail: document.getElementById('extraRolesDetail'),
+        additionalExpensesDetail: document.getElementById('additionalExpensesDetail'),
+        centerOwesTherapistDetail: document.getElementById('centerOwesTherapistDetail')
     };
 
     function effectiveRate() {
@@ -1245,6 +1248,53 @@ ${d.fullName || '—'}
             .replace(/"/g, '&quot;');
     }
 
+    function renderSummaryItemList(container, items, labelFn, amountFn, ui) {
+        if (!container) return;
+        const block = ui && ui.block;
+        const panel = ui && ui.panel;
+        const toggle = ui && ui.toggle;
+        const rows = (Array.isArray(items) ? items : [])
+            .map((item) => ({
+                label: String(labelFn(item) || '').trim() || 'ללא שם',
+                amount: Math.max(0, toAmount(amountFn(item), 0))
+            }))
+            .filter((row) => row.label !== 'ללא שם' || row.amount > 0);
+        if (!rows.length) {
+            container.innerHTML = '';
+            if (block) block.classList.add('is-hidden');
+            if (panel) panel.classList.add('is-collapsed');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+                const chev = toggle.querySelector('.summary-extra-chevron');
+                if (chev) chev.textContent = '▸';
+            }
+            return;
+        }
+        if (block) block.classList.remove('is-hidden');
+        container.innerHTML = rows
+            .map((row) =>
+                `<li><span class="summary-item-name">${escapeHtml(row.label)}</span>` +
+                `<span class="summary-item-amount">${row.amount.toLocaleString('he-IL')} ₪</span></li>`
+            )
+            .join('');
+    }
+
+    function wireSummaryComponentToggles() {
+        document.querySelectorAll('.summary-component-toggle').forEach((btn) => {
+            if (btn.dataset.wired === '1') return;
+            btn.dataset.wired = '1';
+            btn.addEventListener('click', () => {
+                const panelId = btn.getAttribute('data-panel');
+                const panel = panelId ? document.getElementById(panelId) : null;
+                if (!panel) return;
+                const collapsed = panel.classList.toggle('is-collapsed');
+                btn.setAttribute('aria-expanded', String(!collapsed));
+                const chev = btn.querySelector('.summary-extra-chevron');
+                if (chev) chev.textContent = collapsed ? '▸' : '▾';
+            });
+        });
+    }
+
     function exportExcel() {
         calculate();
         const s = collectState();
@@ -1905,8 +1955,41 @@ ${d.fullName || '—'}
         els.diagnosticsTotal.textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
         els.groupAssessmentsTotal.textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
         els.extraRolesTotal.textContent = sum.extraRolesTotal.toLocaleString('he-IL');
+        renderSummaryItemList(
+            els.extraRolesDetail,
+            sum.extras.extraRoleEnabled ? sum.extras.extraRoles : [],
+            (x) => x.role,
+            (x) => x.amount,
+            {
+                block: document.getElementById('extraRolesDetailBlock'),
+                panel: document.getElementById('extraRolesDetailPanel'),
+                toggle: document.getElementById('extraRolesDetailToggle')
+            }
+        );
         els.additionalExpensesTotal.textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
+        renderSummaryItemList(
+            els.additionalExpensesDetail,
+            sum.extras.additionalExpensesEnabled ? sum.extras.additionalExpenses : [],
+            (x) => x.name,
+            (x) => x.amount,
+            {
+                block: document.getElementById('additionalExpensesDetailBlock'),
+                panel: document.getElementById('additionalExpensesDetailPanel'),
+                toggle: document.getElementById('additionalExpensesDetailToggle')
+            }
+        );
         els.centerOwesTherapistTotal.textContent = sum.centerOwesTherapistTotal.toLocaleString('he-IL');
+        renderSummaryItemList(
+            els.centerOwesTherapistDetail,
+            sum.extras.centerOwesTherapistEnabled ? sum.extras.centerOwesTherapist : [],
+            (x) => x.name,
+            (x) => x.amount,
+            {
+                block: document.getElementById('centerOwesTherapistDetailBlock'),
+                panel: document.getElementById('centerOwesTherapistDetailPanel'),
+                toggle: document.getElementById('centerOwesTherapistDetailToggle')
+            }
+        );
         els.courseExpensesTotal.textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
         els.grossIndividualTotal.textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
         els.centerTotal.textContent = sum.centerTotal.toLocaleString('he-IL');
@@ -2290,6 +2373,7 @@ ${d.fullName || '—'}
         reader.readAsText(file, 'UTF-8');
     });
 
+    wireSummaryComponentToggles();
     load();
 
     document.addEventListener('visibilitychange', () => {

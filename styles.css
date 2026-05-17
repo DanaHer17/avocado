@@ -426,6 +426,121 @@
             padding-top: 0;
             border-top: none;
         }
+        .summary dl > .summary-component-block {
+            grid-column: 1 / -1;
+            margin-top: -0.15rem;
+            margin-bottom: 0.35rem;
+        }
+        .summary-component-block .summary-extra-toggle-row {
+            margin-top: 0;
+            margin-bottom: 0.35rem;
+        }
+        .summary-component-panel {
+            margin-top: 0;
+        }
+        .summary-item-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: rgba(236, 253, 245, 0.88);
+        }
+        .summary-item-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.5rem;
+            padding: 0.15rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .summary-item-list li:last-child {
+            border-bottom: none;
+        }
+        .summary-item-name {
+            text-align: right;
+            flex: 1;
+        }
+        .summary-item-amount {
+            flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+            color: #fde047;
+        }
+        .net-settlement-details {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.65rem;
+            border: 1px solid rgba(236, 253, 245, 0.25);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.15);
+        }
+        .net-settlement-details > summary {
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.84rem;
+            color: #ecfdf5;
+            list-style-position: outside;
+        }
+        .net-settlement-details[open] > summary {
+            margin-bottom: 0.5rem;
+        }
+        .net-settlement-breakdown-root {
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+        .net-break-section {
+            margin-bottom: 0.85rem;
+        }
+        .net-break-section:last-child {
+            margin-bottom: 0;
+        }
+        .net-break-heading {
+            margin: 0 0 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: rgba(236, 253, 245, 0.92);
+        }
+        .net-break-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.75rem;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            color: #ecfdf5;
+        }
+        .net-break-row.net-break-deduct .net-break-val {
+            color: #fde68a;
+        }
+        .net-break-row.net-break-subtotal {
+            font-weight: 700;
+            border-bottom-color: rgba(255, 255, 255, 0.22);
+            margin-top: 0.2rem;
+        }
+        .net-break-row.net-break-emphasis {
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.08);
+            margin-top: 0.15rem;
+            padding: 0.3rem 0.4rem;
+            border-radius: 6px;
+            border-bottom: none;
+        }
+        .net-break-row.net-break-total {
+            font-size: 0.9rem;
+            font-weight: 800;
+            border-bottom: none;
+            margin-top: 0.35rem;
+            padding-top: 0.4rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.28);
+        }
+        .net-break-label {
+            flex: 1;
+            text-align: right;
+        }
+        .net-break-val {
+            flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+        }
         .grand.extra-grand {
             margin-top: 0.55rem;
             padding-top: 0.55rem;
