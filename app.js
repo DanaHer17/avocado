@@ -1820,10 +1820,10 @@ ${d.fullName || '—'}
                 <button type="button" class="btn-mini add-cancel-unpaid-btn">+ ביטול ללא תשלום</button>
             </td>
             <td><input type="checkbox" class="paid-mark" title="שולם — הדגשת שורה; הקיזוז נספר רק כשזה מסומן יחד עם למרכז/למטפלת" ${d.paidReceived ? 'checked' : ''} /></td>
-            <td><input type="checkbox" class="paid-center" ${d.paidToCenter ? 'checked' : ''} /></td>
-            <td><input type="checkbox" class="paid-therapist" ${d.paidToTherapist ? 'checked' : ''} /></td>
+            <td class="col-pay-center"><input type="checkbox" class="paid-center" ${d.paidToCenter ? 'checked' : ''} /></td>
+            <td class="col-pay-therapist"><input type="checkbox" class="paid-therapist" ${d.paidToTherapist ? 'checked' : ''} /></td>
             <td class="row-total">0</td>
-            <td><button type="button" class="btn btn-danger row-del">מחק</button></td>
+            <td class="no-print-col"><button type="button" class="btn btn-danger row-del">מחק</button></td>
         `;
         tr.querySelector('.row-idx')?.addEventListener('click', () => {
             openPaymentMessageForRow(tr);

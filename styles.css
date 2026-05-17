@@ -709,6 +709,7 @@
         @media print {
             body { background: #fff; padding: 0.5cm; }
             .no-print { display: none !important; }
+            .no-print-col { display: none !important; }
             .scroll-x { overflow: visible !important; }
             table { min-width: 0 !important; font-size: 10pt; }
             .card {
@@ -718,6 +719,85 @@
                 page-break-inside: avoid;
             }
             .summary { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-            #patientTable tbody tr.row-pay-mark { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            #patientTable .btn-mini,
+            #patientTable .btn-mini-alt,
+            #patientTable .add-date-btn,
+            #patientTable .bulk-date-btn,
+            #patientTable .add-cancel-paid-btn,
+            #patientTable .cancel-note {
+                display: none !important;
+            }
+            #patientTable th.col-pay-center {
+                background: #dbeafe !important;
+                color: #1e40af !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            #patientTable th.col-pay-therapist {
+                background: #d1fae5 !important;
+                color: #065f46 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            #patientTable td.col-pay-center {
+                position: relative;
+                text-align: center;
+                vertical-align: middle;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            #patientTable td.col-pay-therapist {
+                position: relative;
+                text-align: center;
+                vertical-align: middle;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            #patientTable td.col-pay-center:has(.paid-center:checked) {
+                background: #93c5fd !important;
+            }
+            #patientTable td.col-pay-therapist:has(.paid-therapist:checked) {
+                background: #6ee7b7 !important;
+            }
+            #patientTable td.col-pay-center .paid-center,
+            #patientTable td.col-pay-therapist .paid-therapist {
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+                margin: 0;
+            }
+            #patientTable td.col-pay-center:has(.paid-center:checked)::after {
+                content: 'כן';
+                font-weight: 700;
+                color: #1e3a8a;
+            }
+            #patientTable td.col-pay-therapist:has(.paid-therapist:checked)::after {
+                content: 'כן';
+                font-weight: 700;
+                color: #064e3b;
+            }
+            #patientTable tbody tr.row-pay-mark {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            #patientTable tbody tr.row-pay-target-center td {
+                background-color: rgba(191, 219, 254, 0.45) !important;
+            }
+            #patientTable tbody tr.row-pay-target-therapist td {
+                background-color: rgba(167, 243, 208, 0.45) !important;
+            }
+            #patientTable tbody tr.row-pay-target-both td {
+                background: linear-gradient(90deg, rgba(191, 219, 254, 0.4), rgba(167, 243, 208, 0.4)) !important;
+            }
+            #patientTable tbody tr.row-pay-target-none.row-pay-mark td {
+                background-color: rgba(254, 240, 138, 0.35) !important;
+            }
+            #patientTable tbody tr.row-pay-target-center td.col-pay-center:has(.paid-center:checked),
+            #patientTable tbody tr.row-pay-target-therapist td.col-pay-therapist:has(.paid-therapist:checked),
+            #patientTable tbody tr.row-pay-target-both td.col-pay-center:has(.paid-center:checked),
+            #patientTable tbody tr.row-pay-target-both td.col-pay-therapist:has(.paid-therapist:checked) {
+                filter: saturate(1.15);
+            }
         }
     
