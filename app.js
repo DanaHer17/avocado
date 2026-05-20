@@ -119,7 +119,9 @@
         centerTotal: document.getElementById('centerTotal'),
         grandTotal: document.getElementById('grandTotal'),
         paidToCenterTotal: document.getElementById('paidToCenterTotal'),
+        paidToCenterTreatmentCount: document.getElementById('paidToCenterTreatmentCount'),
         paidToTherapistTotal: document.getElementById('paidToTherapistTotal'),
+        paidToTherapistTreatmentCount: document.getElementById('paidToTherapistTreatmentCount'),
         remainingToCenter: document.getElementById('remainingToCenter'),
         remainingToTherapist: document.getElementById('remainingToTherapist'),
         netSettlementText: document.getElementById('netSettlementText'),
@@ -887,7 +889,9 @@ ${d.fullName || '—'}
                 paidToCenterTotal: sum.paidToCenterTotal,
                 paidToTherapistTotal: sum.paidToTherapistTotal,
                 paidToCenterApplied: sum.paidToCenterApplied,
-                paidToTherapistApplied: sum.paidToTherapistApplied
+                paidToTherapistApplied: sum.paidToTherapistApplied,
+                paidToCenterTreatmentCount: sum.paidToCenterTreatmentCount,
+                paidToTherapistTreatmentCount: sum.paidToTherapistTreatmentCount
             }
         };
     }
@@ -1099,6 +1103,8 @@ ${d.fullName || '—'}
         let paidToTherapistTotal = 0;
         let paidToCenterApplied = 0;
         let paidToTherapistApplied = 0;
+        let paidToCenterTreatmentCount = 0;
+        let paidToTherapistTreatmentCount = 0;
         tbody.querySelectorAll('tr').forEach(tr => {
             const rd = rowDataFromTr(tr);
             const sessionsPart = sessionBreakdownFromRow(rd, {
@@ -1139,10 +1145,12 @@ ${d.fullName || '—'}
             if (paidToCenter) {
                 paidToCenterTotal += grossRow;
                 paidToCenterApplied += centerShare;
+                paidToCenterTreatmentCount += billable;
             }
             if (paidToTherapist) {
                 paidToTherapistTotal += grossRow;
                 paidToTherapistApplied += therapistShare;
+                paidToTherapistTreatmentCount += billable;
             }
         });
         const g = collectGroupState();
@@ -1219,6 +1227,8 @@ ${d.fullName || '—'}
             paidToTherapistTotal,
             paidToCenterApplied,
             paidToTherapistApplied,
+            paidToCenterTreatmentCount,
+            paidToTherapistTreatmentCount,
             remainingToCenter,
             remainingToTherapist,
             netSettlement,
@@ -1355,7 +1365,9 @@ ${d.fullName || '—'}
         aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
         aoa.push(['חלק המרכז (₪)', sum.centerTotal]);
         aoa.push(['למרכז (₪)', sum.paidToCenterTotal, 'לפי סימון יעד (₪)', sum.paidToCenterApplied]);
+        aoa.push(['מפגשי טיפול לתשלום למרכז (סימון יעד)', sum.paidToCenterTreatmentCount]);
         aoa.push(['למטפלת (₪)', sum.paidToTherapistTotal, 'לפי סימון יעד (₪)', sum.paidToTherapistApplied]);
+        aoa.push(['מפגשי טיפול לתשלום למטפלת (סימון יעד)', sum.paidToTherapistTreatmentCount]);
         aoa.push(['יתרה למרכז (כמה אני חייבת למרכז) (₪)', sum.remainingToCenter]);
         aoa.push(['יתרה למטפלת (כמה המרכז חייב לי) (₪)', sum.remainingToTherapist]);
         aoa.push(['נטו אחרי קיזוז', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה')]);
@@ -1498,7 +1510,8 @@ ${d.fullName || '—'}
             `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
             `<strong>סה״כ הכנסה פרטנית:</strong> ${sum.grossIndividualTotal} ₪<br>` +
             `<strong>חלק המרכז (פרטני):</strong> ${sum.centerTotal} ₪<br>` +
-            `<strong>למרכז:</strong> ${sum.paidToCenterTotal} ₪ (לפי סימון יעד: ${sum.paidToCenterApplied} ₪) &nbsp;|&nbsp; <strong>למטפלת:</strong> ${sum.paidToTherapistTotal} ₪ (לפי סימון יעד: ${sum.paidToTherapistApplied} ₪)<br>` +
+            `<strong>למרכז:</strong> ${sum.paidToCenterTotal} ₪ (לפי סימון יעד: ${sum.paidToCenterApplied} ₪) &nbsp;|&nbsp; <strong>מפגשי טיפול לתשלום למרכז:</strong> ${sum.paidToCenterTreatmentCount}<br>` +
+            `<strong>למטפלת:</strong> ${sum.paidToTherapistTotal} ₪ (לפי סימון יעד: ${sum.paidToTherapistApplied} ₪) &nbsp;|&nbsp; <strong>מפגשי טיפול לתשלום למטפלת:</strong> ${sum.paidToTherapistTreatmentCount}<br>` +
             `<strong>יתרה למרכז (כמה אני חייבת למרכז):</strong> ${sum.remainingToCenter} ₪ &nbsp;|&nbsp; <strong>יתרה למטפלת (כמה המרכז חייב לי):</strong> ${sum.remainingToTherapist} ₪<br>` +
             `<strong>נטו אחרי קיזוז:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה')}<br>` +
             `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
@@ -1996,7 +2009,9 @@ ${d.fullName || '—'}
         els.centerTotal.textContent = sum.centerTotal.toLocaleString('he-IL');
         els.grandTotal.textContent = sum.grandTotal.toLocaleString('he-IL');
         els.paidToCenterTotal.textContent = `${sum.paidToCenterTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToCenterApplied.toLocaleString('he-IL')})`;
+        els.paidToCenterTreatmentCount.textContent = sum.paidToCenterTreatmentCount.toLocaleString('he-IL');
         els.paidToTherapistTotal.textContent = `${sum.paidToTherapistTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToTherapistApplied.toLocaleString('he-IL')})`;
+        els.paidToTherapistTreatmentCount.textContent = sum.paidToTherapistTreatmentCount.toLocaleString('he-IL');
         els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
         els.remainingToTherapist.textContent = sum.remainingToTherapist.toLocaleString('he-IL');
         const netEl = els.netSettlementText;

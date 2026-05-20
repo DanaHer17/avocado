@@ -422,9 +422,41 @@
             display: none;
         }
         .summary-extra-panel .summary-settlement-block {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.35rem 1rem;
             margin-top: 0;
             padding-top: 0;
             border-top: none;
+        }
+        .summary-settlement-block .summary-pay-zone {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.35rem 1rem;
+            padding: 0.55rem 0.65rem;
+            border-radius: 10px;
+            margin-top: 0.4rem;
+        }
+        .summary-pay-zone-center {
+            background: rgba(59, 130, 246, 0.16);
+            border: 1px solid rgba(147, 197, 253, 0.38);
+        }
+        .summary-pay-zone-center dt {
+            color: #bfdbfe;
+        }
+        .summary-pay-zone-center dd {
+            color: #eff6ff;
+        }
+        .summary-pay-zone-therapist {
+            background: rgba(16, 185, 129, 0.16);
+            border: 1px solid rgba(110, 231, 183, 0.38);
+        }
+        .summary-pay-zone-therapist dt {
+            color: #a7f3d0;
+        }
+        .summary-pay-zone-therapist dd {
+            color: #ecfdf5;
         }
         .summary dl > .summary-component-block {
             grid-column: 1 / -1;
@@ -719,6 +751,22 @@
                 page-break-inside: avoid;
             }
             .summary { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .summary-pay-zone-center {
+                background: #dbeafe !important;
+                border-color: #93c5fd !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .summary-pay-zone-center dt { color: #1e40af !important; }
+            .summary-pay-zone-center dd { color: #1e3a8a !important; }
+            .summary-pay-zone-therapist {
+                background: #d1fae5 !important;
+                border-color: #6ee7b7 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .summary-pay-zone-therapist dt { color: #065f46 !important; }
+            .summary-pay-zone-therapist dd { color: #047857 !important; }
             #patientTable .btn-mini,
             #patientTable .btn-mini-alt,
             #patientTable .add-date-btn,
@@ -800,4 +848,3 @@
                 filter: saturate(1.15);
             }
         }
-    
