@@ -961,6 +961,7 @@ ${d.fullName || '—'}
             sessionTypes: collectSessionTypes(),
             therapistPaymentDetails: collectTherapistPaymentDetails(),
             meetingBonus: meetingBonusInput?.checked,
+            group: collectGroupState(),
             extras: collectExtrasState(),
             rows
         };
