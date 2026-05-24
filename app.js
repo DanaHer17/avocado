@@ -2496,8 +2496,8 @@ ${d.fullName || '—'}
     window.addEventListener('pagehide', flushPersist);
 
     periodInput.addEventListener('change', () => {
-        const previousPeriod = currentPeriod || periodInput.value;
         const nextPeriod = periodInput.value;
+        const previousPeriod = currentPeriod || readStore().activePeriod || '';
         if (previousPeriod && nextPeriod && previousPeriod !== nextPeriod) {
             const snapshot = collectState();
             snapshot.period = previousPeriod;
