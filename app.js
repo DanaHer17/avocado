@@ -700,6 +700,8 @@
             sessions: parseFloat(tr.querySelector('.sessions')?.value) || 0,
             cancelPaidEntries,
             cancelUnpaidDates,
+            cancelPaid: cancelPaidEntries.length,
+            cancelUnpaid: cancelUnpaidDates.length,
             paidReceived: !!tr.querySelector('.paid-mark')?.checked,
             paidToCenter: !!tr.querySelector('.paid-center')?.checked,
             paidToTherapist: !!tr.querySelector('.paid-therapist')?.checked
@@ -1047,29 +1049,92 @@ ${d.fullName || '—'}
         };
     }
 
+    function defaultUiState() {
+        return {
+            extraCalcsCollapsed: false,
+            componentPanels: {}
+        };
+    }
+
+    function collectUiState() {
+        const componentPanels = {};
+        document.querySelectorAll('.summary-component-toggle').forEach((btn) => {
+            const panelId = btn.getAttribute('data-panel');
+            const panel = panelId ? document.getElementById(panelId) : null;
+            if (panelId && panel) componentPanels[panelId] = panel.classList.contains('is-collapsed');
+        });
+        return {
+            extraCalcsCollapsed: extraCalcsPanel?.classList.contains('is-collapsed') ?? false,
+            componentPanels
+        };
+    }
+
+    function applyUiState(ui) {
+        const u = ui && typeof ui === 'object' ? ui : defaultUiState();
+        if (extraCalcsPanel && extraCalcsToggleBtn) {
+            const collapsed = !!u.extraCalcsCollapsed;
+            extraCalcsPanel.classList.toggle('is-collapsed', collapsed);
+            extraCalcsToggleBtn.setAttribute('aria-expanded', String(!collapsed));
+            const chev = extraCalcsToggleBtn.querySelector('.summary-extra-chevron');
+            if (chev) chev.textContent = collapsed ? '▸' : '▾';
+        }
+        const panels = u.componentPanels && typeof u.componentPanels === 'object' ? u.componentPanels : {};
+        document.querySelectorAll('.summary-component-toggle').forEach((btn) => {
+            const panelId = btn.getAttribute('data-panel');
+            const panel = panelId ? document.getElementById(panelId) : null;
+            if (!panel) return;
+            const collapsed = Object.prototype.hasOwnProperty.call(panels, panelId)
+                ? !!panels[panelId]
+                : panel.classList.contains('is-collapsed');
+            panel.classList.toggle('is-collapsed', collapsed);
+            btn.setAttribute('aria-expanded', String(!collapsed));
+            const chev = btn.querySelector('.summary-extra-chevron');
+            if (chev) chev.textContent = collapsed ? '▸' : '▾';
+        });
+    }
+
+    function normalizeStoreShape(parsed) {
+        const base = parsed && typeof parsed === 'object' ? parsed : {};
+        return {
+            version: 2,
+            reportsByPeriod: base.reportsByPeriod && typeof base.reportsByPeriod === 'object' ? base.reportsByPeriod : {},
+            patientTemplate: Array.isArray(base.patientTemplate) ? base.patientTemplate : [],
+            activePeriod: typeof base.activePeriod === 'string' ? base.activePeriod : '',
+            ui: base.ui && typeof base.ui === 'object' ? base.ui : defaultUiState()
+        };
+    }
+
+    function buildStoreSnapshot() {
+        const state = collectState();
+        const period = state.period || defaultPeriodValue();
+        state.period = period;
+        const store = normalizeStoreShape(readStore());
+        store.reportsByPeriod[period] = state;
+        store.patientTemplate = extractTemplateNames(state.rows);
+        store.activePeriod = period;
+        store.ui = collectUiState();
+        return store;
+    }
+
     function readStore() {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return { version: 2, reportsByPeriod: {}, patientTemplate: [] };
+        if (!raw) return normalizeStoreShape(null);
         const parsed = JSON.parse(raw);
 
         // Migration from old single-report format.
         if (parsed && Array.isArray(parsed.rows)) {
             const period = parsed.period || defaultPeriodValue();
-            return {
-                version: 2,
+            return normalizeStoreShape({
                 reportsByPeriod: { [period]: parsed },
-                patientTemplate: extractTemplateNames(parsed.rows)
-            };
+                patientTemplate: extractTemplateNames(parsed.rows),
+                activePeriod: period
+            });
         }
 
         if (parsed && typeof parsed === 'object') {
-            return {
-                version: 2,
-                reportsByPeriod: parsed.reportsByPeriod && typeof parsed.reportsByPeriod === 'object' ? parsed.reportsByPeriod : {},
-                patientTemplate: Array.isArray(parsed.patientTemplate) ? parsed.patientTemplate : []
-            };
+            return normalizeStoreShape(parsed);
         }
-        return { version: 2, reportsByPeriod: {}, patientTemplate: [] };
+        return normalizeStoreShape(null);
     }
 
     function writeStore(store) {
@@ -1302,6 +1367,7 @@ ${d.fullName || '—'}
                 btn.setAttribute('aria-expanded', String(!collapsed));
                 const chev = btn.querySelector('.summary-extra-chevron');
                 if (chev) chev.textContent = collapsed ? '▸' : '▾';
+                schedulePersist();
             });
         });
     }
@@ -1532,23 +1598,47 @@ ${d.fullName || '—'}
 
     function exportJsonBackup() {
         calculate();
-        const state = collectState();
+        const store = buildStoreSnapshot();
+        const activePeriod = store.activePeriod || periodInput.value || defaultPeriodValue();
+        const activeState = store.reportsByPeriod[activePeriod] || collectState();
         const sum = getSummary();
         const payload = {
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
-            ...state,
+            activePeriod,
+            patientTemplate: store.patientTemplate,
+            reportsByPeriod: store.reportsByPeriod,
+            ui: store.ui,
             summary: sum,
-            paymentRoutingSummary: buildPaymentRoutingSummary(state, sum)
+            paymentRoutingSummary: buildPaymentRoutingSummary(activeState, sum)
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
         downloadBlob(`treatment-backup-${stampFilename()}.json`, blob);
     }
 
     function importFromJsonObject(data) {
-        const core = data && data.rows ? data : null;
+        if (!data || typeof data !== 'object') {
+            throw new Error('קובץ JSON לא תקין');
+        }
+
+        if (data.reportsByPeriod && typeof data.reportsByPeriod === 'object') {
+            const store = normalizeStoreShape(data);
+            if (!Object.keys(store.reportsByPeriod).length) {
+                throw new Error('לא נמצאו דוחות חודשיים בקובץ');
+            }
+            writeStore(store);
+            const period = store.activePeriod
+                || Object.keys(store.reportsByPeriod).sort().pop()
+                || defaultPeriodValue();
+            periodInput.value = period;
+            currentPeriod = '';
+            load();
+            return;
+        }
+
+        const core = data.rows ? data : null;
         if (!core || !Array.isArray(core.rows)) {
-            throw new Error('הקובץ חייב להכיל מערך rows כמו בגיבוי האפליקציה');
+            throw new Error('הקובץ חייב להכיל reportsByPeriod או מערך rows כמו בגיבוי האפליקציה');
         }
         applyState({
             period: core.period,
@@ -1562,6 +1652,7 @@ ${d.fullName || '—'}
             extras: core.extras,
             rows: core.rows
         });
+        if (data.ui) applyUiState(data.ui);
         persist();
     }
 
@@ -1678,11 +1769,8 @@ ${d.fullName || '—'}
         clearTimeout(persistDebounceTimer);
         persistDebounceTimer = null;
         try {
-            const state = collectState();
-            const period = state.period || defaultPeriodValue();
-            const store = readStore();
-            store.reportsByPeriod[period] = state;
-            store.patientTemplate = extractTemplateNames(state.rows);
+            const store = buildStoreSnapshot();
+            const period = store.activePeriod || defaultPeriodValue();
             writeStore(store);
             currentPeriod = period;
             saveHint.textContent = 'נשמר בדפדפן';
@@ -2024,15 +2112,23 @@ ${d.fullName || '—'}
         }
     }
 
+    function touchActivePeriod(period) {
+        const store = readStore();
+        store.activePeriod = period;
+        writeStore(store);
+    }
+
     function load() {
         try {
             const store = readStore();
-            const selectedPeriod = periodInput.value || defaultPeriodValue();
+            const selectedPeriod = periodInput.value || store.activePeriod || defaultPeriodValue();
             periodInput.value = selectedPeriod;
             const existing = store.reportsByPeriod[selectedPeriod];
             if (existing) {
                 applyState(existing);
                 currentPeriod = selectedPeriod;
+                applyUiState(store.ui);
+                touchActivePeriod(selectedPeriod);
                 return;
             }
             applyState({
@@ -2048,6 +2144,7 @@ ${d.fullName || '—'}
                 rows: rowsFromTemplate(store.patientTemplate)
             });
             currentPeriod = selectedPeriod;
+            applyUiState(store.ui);
             persist();
         } catch (e) {
             tbody.innerHTML = '';
@@ -2073,6 +2170,7 @@ ${d.fullName || '—'}
             extraCalcsToggleBtn.setAttribute('aria-expanded', String(!collapsed));
             const chev = extraCalcsToggleBtn.querySelector('.summary-extra-chevron');
             if (chev) chev.textContent = collapsed ? '▸' : '▾';
+            schedulePersist();
         });
     }
 
@@ -2398,15 +2496,19 @@ ${d.fullName || '—'}
     window.addEventListener('pagehide', flushPersist);
 
     periodInput.addEventListener('change', () => {
-        flushPersist();
-        if (currentPeriod && currentPeriod !== periodInput.value) {
-            // Save current report before moving month.
+        const previousPeriod = currentPeriod || periodInput.value;
+        const nextPeriod = periodInput.value;
+        if (previousPeriod && nextPeriod && previousPeriod !== nextPeriod) {
             const snapshot = collectState();
-            snapshot.period = currentPeriod;
+            snapshot.period = previousPeriod;
             const store = readStore();
-            store.reportsByPeriod[currentPeriod] = snapshot;
+            store.reportsByPeriod[previousPeriod] = snapshot;
             store.patientTemplate = extractTemplateNames(snapshot.rows);
+            store.activePeriod = nextPeriod;
+            store.ui = collectUiState();
             writeStore(store);
+        } else {
+            flushPersist();
         }
         load();
     });
