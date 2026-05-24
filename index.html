@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260520">
 </head>
 <body>
 <div class="wrap">
@@ -109,6 +109,13 @@
             <button type="button" class="btn btn-primary" id="addRow">+ הוספת מטופל</button>
             <button type="button" class="btn btn-ghost" id="clearAll">איפוס טבלה</button>
             <button type="button" class="btn btn-ghost" id="saveNow" title="השמירה האוטומטית פעילה תמיד">שמירה עכשיו</button>
+            <label for="patientPayFilter" class="toolbar-filter-label">הצג:</label>
+            <select id="patientPayFilter" class="toolbar-filter-select" aria-label="סינון לפי יעד תשלום" onchange="window.applyPatientTableFilter && window.applyPatientTableFilter(this.value)">
+                <option value="all">כל המטופלים</option>
+                <option value="center">משלמים למרכז</option>
+                <option value="therapist">משלמים למטפלת</option>
+            </select>
+            <span class="toolbar-filter-count" id="patientPayFilterCount" aria-live="polite"></span>
             <span class="save-hint" id="saveHint" aria-live="polite"></span>
         </div>
         <div class="scroll-x compact-table" id="patientTableWrap">
@@ -419,8 +426,11 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- שורות מסוננות — מחוץ לטבלה הראשית כדי שלא יוצגו -->
+<table id="patientTableStash" hidden aria-hidden="true" style="display:none"><tbody></tbody></table>
+
 <script src="config.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=20260520"></script>
 
 </body>
 </html>

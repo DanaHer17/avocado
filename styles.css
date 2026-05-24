@@ -72,6 +72,30 @@
             align-items: center;
             margin-bottom: 0.75rem;
         }
+        .toolbar-filter-label {
+            margin: 0;
+            font-size: 0.88rem;
+            color: var(--muted);
+        }
+        .toolbar-filter-select {
+            padding: 0.45rem 0.65rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.88rem;
+            background: #fff;
+            color: var(--text);
+            min-width: 9.5rem;
+        }
+        .toolbar-filter-count {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        #patientTableWrap[data-pay-filter="center"] #patientTable tbody tr:not([data-pay-target="center"]),
+        #patientTableWrap[data-pay-filter="therapist"] #patientTable tbody tr:not([data-pay-target="therapist"]),
+        #patientTable tbody tr.patient-row-filter-hidden,
+        #patientTable tbody tr.patient-row-filter-hidden[hidden] {
+            display: none !important;
+        }
         .btn {
             padding: 0.5rem 1rem;
             border: none;

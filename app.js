@@ -96,6 +96,7 @@
     const extraCalcsToggleBtn = document.getElementById('extraCalcsToggle');
     const extraCalcsPanel = document.getElementById('extraCalcsPanel');
     let currentPeriod = '';
+    let patientRowOrderSeq = 0;
     let saveTimer = null;
     let persistDebounceTimer = null;
     let bulkDateTargetRow = null;
@@ -846,7 +847,16 @@ ${d.fullName || '—'}
         paymentMsgDialog.showModal();
     }
 
+    function enforceExclusivePayTarget(tr, source) {
+        const center = tr.querySelector('.paid-center');
+        const therapist = tr.querySelector('.paid-therapist');
+        if (!center || !therapist) return;
+        if (source === 'center' && center.checked) therapist.checked = false;
+        if (source === 'therapist' && therapist.checked) center.checked = false;
+    }
+
     function updateRowPaidStyle(tr) {
+        syncRowPayTargetData(tr);
         const mark = tr.querySelector('.paid-mark')?.checked;
         const c = tr.querySelector('.paid-center')?.checked;
         const t = tr.querySelector('.paid-therapist')?.checked;
@@ -860,8 +870,96 @@ ${d.fullName || '—'}
     }
 
     function updateAllRowPaidStyles() {
-        tbody.querySelectorAll('tr').forEach(updateRowPaidStyle);
+        getAllPatientTableRows().forEach(updateRowPaidStyle);
     }
+
+    function patientTableStashTbodyEl() {
+        let table = document.getElementById('patientTableStash');
+        if (!table) {
+            table = document.createElement('table');
+            table.id = 'patientTableStash';
+            table.hidden = true;
+            table.setAttribute('aria-hidden', 'true');
+            table.style.display = 'none';
+            table.appendChild(document.createElement('tbody'));
+            document.body.appendChild(table);
+        }
+        return table.querySelector('tbody');
+    }
+
+    function assignPatientRowOrder(tr) {
+        if (!tr.dataset.rowOrder) {
+            patientRowOrderSeq += 1;
+            tr.dataset.rowOrder = String(patientRowOrderSeq);
+        }
+    }
+
+    function clearPatientTableRows() {
+        if (tbody) tbody.replaceChildren();
+        const stash = patientTableStashTbodyEl();
+        if (stash) stash.replaceChildren();
+        patientRowOrderSeq = 0;
+    }
+
+    function getAllPatientTableRows() {
+        const rows = [];
+        if (tbody) {
+            rows.push(...Array.from(tbody.children).filter((el) => el.tagName === 'TR'));
+        }
+        const stash = patientTableStashTbodyEl();
+        if (stash) {
+            rows.push(...Array.from(stash.children).filter((el) => el.tagName === 'TR'));
+        }
+        return rows.sort((a, b) => (Number(a.dataset.rowOrder) || 0) - (Number(b.dataset.rowOrder) || 0));
+    }
+
+    /** יעד תשלום לסינון — רק «למרכז» / «למטפלת», לא «שולם» */
+    function syncRowPayTargetData(tr) {
+        const toCenter = !!tr.querySelector('.paid-center')?.checked;
+        const toTherapist = !!tr.querySelector('.paid-therapist')?.checked;
+        if (toCenter) tr.dataset.payTarget = 'center';
+        else if (toTherapist) tr.dataset.payTarget = 'therapist';
+        else tr.dataset.payTarget = 'none';
+    }
+
+    function getPatientPayFilterValue() {
+        const filterEl = document.getElementById('patientPayFilter');
+        return (filterEl?.value || 'all').trim();
+    }
+
+    function rowMatchesPayFilter(tr, filter) {
+        if (filter === 'all') return true;
+        syncRowPayTargetData(tr);
+        return tr.dataset.payTarget === filter;
+    }
+
+    function applyPatientTableFilter(forcedFilter) {
+        if (!tbody) return;
+        const stashTbody = patientTableStashTbodyEl();
+        if (!stashTbody) return;
+        const filter = forcedFilter != null ? String(forcedFilter).trim() : getPatientPayFilterValue();
+        const rows = getAllPatientTableRows();
+        let visible = 0;
+        rows.forEach((tr) => {
+            assignPatientRowOrder(tr);
+            syncRowPayTargetData(tr);
+            const show = rowMatchesPayFilter(tr, filter);
+            if (show) {
+                tbody.appendChild(tr);
+                visible += 1;
+            } else {
+                stashTbody.appendChild(tr);
+            }
+        });
+        renumber();
+        const countEl = document.getElementById('patientPayFilterCount');
+        if (countEl) {
+            countEl.textContent = filter === 'all' || !rows.length
+                ? ''
+                : `מוצגות ${visible} מתוך ${rows.length}`;
+        }
+    }
+    window.applyPatientTableFilter = applyPatientTableFilter;
 
     function buildPaymentRoutingSummary(state, sum) {
         const clientRate = parseFloat(state.clientRate) || 0;
@@ -900,23 +998,25 @@ ${d.fullName || '—'}
 
     function updatePatientTableLayoutMode() {
         if (!patientTableWrap) return;
-        const hasCancelRows = !!tbody.querySelector('.cancel-slot');
+        const hasCancelRows = getAllPatientTableRows().some((tr) => tr.querySelector('.cancel-slot'));
         patientTableWrap.classList.toggle('expanded-table', hasCancelRows);
         patientTableWrap.classList.toggle('compact-table', !hasCancelRows);
     }
 
     function refreshSessionTypeSelectsInRows() {
         const options = sessionTypeOptionsHtml('');
-        tbody.querySelectorAll('.date-slot .sess-type-select').forEach((sel) => {
-            const prev = sel.value;
-            sel.innerHTML = options;
-            if (prev && Array.from(sel.options).some((o) => o.value === prev)) sel.value = prev;
+        getAllPatientTableRows().forEach((tr) => {
+            tr.querySelectorAll('.date-slot .sess-type-select').forEach((sel) => {
+                const prev = sel.value;
+                sel.innerHTML = options;
+                if (prev && Array.from(sel.options).some((o) => o.value === prev)) sel.value = prev;
+            });
         });
         updateAllSessionSlotColors();
     }
 
     function refreshDateSlotsForRoleChange() {
-        tbody.querySelectorAll('tr').forEach((tr) => {
+        getAllPatientTableRows().forEach((tr) => {
             const entries = readSessionEntriesFromRow(tr);
             const list = tr.querySelector('.date-row-list');
             if (!list) return;
@@ -954,11 +1054,11 @@ ${d.fullName || '—'}
     }
 
     function updateAllSessionSlotColors() {
-        tbody.querySelectorAll('tr').forEach(updateSessionSlotColorsInRow);
+        getAllPatientTableRows().forEach(updateSessionSlotColorsInRow);
     }
 
     function collectState() {
-        const rows = Array.from(tbody.querySelectorAll('tr')).map(rowDataFromTr);
+        const rows = getAllPatientTableRows().map(rowDataFromTr);
         return {
             period: periodInput.value,
             baseSalary: baseSalaryInput?.value,
@@ -990,7 +1090,7 @@ ${d.fullName || '—'}
         renderGroupDates(Array.isArray(g.dates) ? g.dates : ['']);
         toggleGroupVisibility();
         applyExtrasState(s.extras);
-        tbody.innerHTML = '';
+        clearPatientTableRows();
         const rows = Array.isArray(s.rows) && s.rows.length ? s.rows : [{}];
         rows.forEach(r => addRow(r));
         calculate();
@@ -1170,7 +1270,7 @@ ${d.fullName || '—'}
         let paidToTherapistApplied = 0;
         let paidToCenterTreatmentCount = 0;
         let paidToTherapistTreatmentCount = 0;
-        tbody.querySelectorAll('tr').forEach(tr => {
+        getAllPatientTableRows().forEach(tr => {
             const rd = rowDataFromTr(tr);
             const sessionsPart = sessionBreakdownFromRow(rd, {
                 role,
@@ -1383,7 +1483,7 @@ ${d.fullName || '—'}
         aoa.push(['שכר בסיס למטפלת', s.baseSalary, 'מחיר לטיפול פרטני', s.clientRate, 'ישיבה חודשית (+5)', s.meetingBonus ? 'כן' : 'לא']);
         aoa.push([]);
         aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום (תאריכים)', 'ביטול ללא תשלום (תאריכים)', 'שולם', 'יעד תשלום', 'למרכז', 'למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
-        tbody.querySelectorAll('tr').forEach((tr, i) => {
+        getAllPatientTableRows().forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const rowTotal = rowGrossFromRd(rd, sum.clientRate, activeRole(), sessionTypeMapFrom(collectSessionTypes()));
             const dest = paymentDestinationLabel(!!rd.paidReceived, !!rd.paidToCenter, !!rd.paidToTherapist);
@@ -1408,7 +1508,7 @@ ${d.fullName || '—'}
         aoa.push([]);
         aoa.push(['מי משלם לאן — לפי סימון יעד']);
         aoa.push(['#', 'שם', 'סה״כ שורה (₪)', 'שולם', 'יעד', 'נספר בקיזוז למרכז (₪)', 'נספר בקיזוז למטפלת (₪)']);
-        tbody.querySelectorAll('tr').forEach((tr, i) => {
+        getAllPatientTableRows().forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const rowTotal = rowGrossFromRd(rd, sum.clientRate);
             const pr = !!rd.paidReceived;
@@ -1544,7 +1644,7 @@ ${d.fullName || '—'}
         let tableRows =
             '<tr><th>#</th><th>שם מטופל</th><th>תאריכי מפגשים</th><th>מפגשים</th><th>ביטול בתשלום</th><th>ביטול ללא תשלום</th><th>שולם</th><th>למרכז</th><th>למטפלת</th><th>סה״כ שורה</th></tr>';
         let routingLines = '';
-        tbody.querySelectorAll('tr').forEach((tr, i) => {
+        getAllPatientTableRows().forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const rowTotal = rowGrossFromRd(rd, sum.clientRate, activeRole(), sessionTypeMapFrom(collectSessionTypes()));
             const datesStr = (rd.dates || []).filter(Boolean).join(', ');
@@ -1891,6 +1991,7 @@ ${d.fullName || '—'}
             paidToTherapist: false
         };
         const d = Object.assign({}, defaults, data && typeof data === 'object' ? data : {});
+        if (d.paidToCenter && d.paidToTherapist) d.paidToTherapist = false;
         if (typeof d.paidReceived !== 'boolean') {
             d.paidReceived = !!(d.paidToCenter || d.paidToTherapist);
         }
@@ -1922,8 +2023,8 @@ ${d.fullName || '—'}
                 <button type="button" class="btn-mini add-cancel-unpaid-btn">+ ביטול ללא תשלום</button>
             </td>
             <td><input type="checkbox" class="paid-mark" title="שולם — הדגשת שורה; הקיזוז נספר רק כשזה מסומן יחד עם למרכז/למטפלת" ${d.paidReceived ? 'checked' : ''} /></td>
-            <td class="col-pay-center"><input type="checkbox" class="paid-center" ${d.paidToCenter ? 'checked' : ''} /></td>
-            <td class="col-pay-therapist"><input type="checkbox" class="paid-therapist" ${d.paidToTherapist ? 'checked' : ''} /></td>
+            <td class="col-pay-center"><input type="checkbox" class="paid-center" title="יעד תשלום — לא ניתן לסמן גם למטפלת" ${d.paidToCenter ? 'checked' : ''} /></td>
+            <td class="col-pay-therapist"><input type="checkbox" class="paid-therapist" title="יעד תשלום — לא ניתן לסמן גם למרכז" ${d.paidToTherapist ? 'checked' : ''} /></td>
             <td class="row-total">0</td>
             <td class="no-print-col"><button type="button" class="btn btn-danger row-del">מחק</button></td>
         `;
@@ -1976,11 +2077,17 @@ ${d.fullName || '—'}
             updateRowPaidStyle(tr);
             schedulePersist();
         });
-        tr.querySelectorAll('.paid-center, .paid-therapist').forEach((inp) => {
-            inp.addEventListener('change', () => {
-                updateRowPaidStyle(tr);
-                schedulePersist();
-            });
+        tr.querySelector('.paid-center')?.addEventListener('change', () => {
+            enforceExclusivePayTarget(tr, 'center');
+            updateRowPaidStyle(tr);
+            applyPatientTableFilter();
+            schedulePersist();
+        });
+        tr.querySelector('.paid-therapist')?.addEventListener('change', () => {
+            enforceExclusivePayTarget(tr, 'therapist');
+            updateRowPaidStyle(tr);
+            applyPatientTableFilter();
+            schedulePersist();
         });
         wireDateRow(tr);
         const savedSessionCount = n(d.sessions);
@@ -1991,9 +2098,12 @@ ${d.fullName || '—'}
         tr.querySelector('.row-del').addEventListener('click', () => {
             tr.remove();
             renumber();
+            applyPatientTableFilter();
             schedulePersist();
         });
+        assignPatientRowOrder(tr);
         tbody.appendChild(tr);
+        applyPatientTableFilter();
         renumber();
         updateRowPaidStyle(tr);
         updateSessionSlotColorsInRow(tr);
@@ -2011,7 +2121,8 @@ ${d.fullName || '—'}
     }
 
     function renumber() {
-        tbody.querySelectorAll('tr').forEach((tr, i) => {
+        if (!tbody) return;
+        tbody.querySelectorAll(':scope > tr').forEach((tr, i) => {
             const c = tr.querySelector('.row-idx');
             if (c) c.textContent = String(i + 1);
         });
@@ -2024,7 +2135,7 @@ ${d.fullName || '—'}
         const clientRate = parseFloat(clientRateInput?.value) || 0;
         summaryEls.effectiveRate.textContent = rate.toLocaleString('he-IL');
 
-        tbody.querySelectorAll('tr').forEach(tr => {
+        getAllPatientTableRows().forEach(tr => {
             const rd = rowDataFromTr(tr);
             const sessionsPart = sessionBreakdownFromRow(rd, {
                 role: activeRole(),
@@ -2110,6 +2221,7 @@ ${d.fullName || '—'}
         } else {
             netEl.textContent = 'אין יתרה בין הצדדים';
         }
+        applyPatientTableFilter();
     }
 
     function touchActivePeriod(period) {
@@ -2147,7 +2259,7 @@ ${d.fullName || '—'}
             applyUiState(store.ui);
             persist();
         } catch (e) {
-            tbody.innerHTML = '';
+            clearPatientTableRows();
             addRow();
         }
     }
@@ -2157,10 +2269,15 @@ ${d.fullName || '—'}
         persist();
     });
 
+    document.getElementById('patientPayFilter')?.addEventListener('change', (e) => {
+        applyPatientTableFilter(e.target.value);
+    });
+
     document.getElementById('clearAll').addEventListener('click', () => {
         if (!confirm('למחוק את כל השורות? הנתונים יימחקו מהטבלה (הגדרות יישארו).')) return;
-        tbody.innerHTML = '';
+        clearPatientTableRows();
         addRow();
+        applyPatientTableFilter();
         persist();
     });
 
@@ -2489,6 +2606,7 @@ ${d.fullName || '—'}
 
     wireSummaryComponentToggles();
     load();
+    applyPatientTableFilter();
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') flushPersist();
@@ -2496,8 +2614,8 @@ ${d.fullName || '—'}
     window.addEventListener('pagehide', flushPersist);
 
     periodInput.addEventListener('change', () => {
+        const previousPeriod = currentPeriod || periodInput.value;
         const nextPeriod = periodInput.value;
-        const previousPeriod = currentPeriod || readStore().activePeriod || '';
         if (previousPeriod && nextPeriod && previousPeriod !== nextPeriod) {
             const snapshot = collectState();
             snapshot.period = previousPeriod;
