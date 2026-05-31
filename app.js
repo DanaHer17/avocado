@@ -1695,7 +1695,6 @@ ${d.fullName || '—'}
         const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
         downloadBlob(`treatment-report-${stampFilename()}.doc`, blob);
     }
-
     function exportJsonBackup() {
         calculate();
         const store = buildStoreSnapshot();
@@ -2259,10 +2258,16 @@ ${d.fullName || '—'}
             applyUiState(store.ui);
             persist();
         } catch (e) {
+            console.error('load failed', e);
+            alert('לא ניתן לטעון את הנתונים מהדפדפן. הנתונים עדיין אולי שמורים — נסי «ייבוא מקובץ JSON» מגיבוי, או בדקי Application → Local Storage בכלי המפתחים.');
             clearPatientTableRows();
             addRow();
         }
     }
+
+    wireSummaryComponentToggles();
+    load();
+    applyPatientTableFilter();
 
     document.getElementById('addRow').addEventListener('click', () => {
         addRow();
@@ -2545,8 +2550,8 @@ ${d.fullName || '—'}
         }, 2500);
     });
 
-    document.getElementById('exportExcel').addEventListener('click', exportExcel);
-    document.getElementById('exportWord').addEventListener('click', exportWord);
+    document.getElementById('exportExcel')?.addEventListener('click', exportExcel);
+    document.getElementById('exportWord')?.addEventListener('click', exportWord);
     document.getElementById('exportPdf').addEventListener('click', () => {
         calculate();
         window.print();
@@ -2604,18 +2609,14 @@ ${d.fullName || '—'}
         reader.readAsText(file, 'UTF-8');
     });
 
-    wireSummaryComponentToggles();
-    load();
-    applyPatientTableFilter();
-
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') flushPersist();
     });
     window.addEventListener('pagehide', flushPersist);
 
     periodInput.addEventListener('change', () => {
-        const previousPeriod = currentPeriod || periodInput.value;
         const nextPeriod = periodInput.value;
+        const previousPeriod = currentPeriod || readStore().activePeriod || '';
         if (previousPeriod && nextPeriod && previousPeriod !== nextPeriod) {
             const snapshot = collectState();
             snapshot.period = previousPeriod;
