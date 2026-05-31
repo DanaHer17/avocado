@@ -2265,6 +2265,19 @@ ${d.fullName || '—'}
         }
     }
 
+    applySessionTypes(defaultSessionTypes());
+    applyTherapistPaymentDetails();
+    roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
+    renderGroupDates(['']);
+    toggleGroupVisibility();
+    toggleParentMeetingsVisibility();
+    toggleLanguageEvaluationsVisibility();
+    toggleDiagnosticsVisibility();
+    toggleGroupAssessmentsVisibility();
+    toggleCourseExpensesVisibility();
+    toggleExtraRoleVisibility();
+    toggleAdditionalExpensesVisibility();
+
     wireSummaryComponentToggles();
     load();
     applyPatientTableFilter();
@@ -2523,20 +2536,6 @@ ${d.fullName || '—'}
             if (ok) alert('ההודעה הועתקה ללוח.');
         }
     });
-
-    if (!periodInput.value) periodInput.value = defaultPeriodValue();
-    applySessionTypes(defaultSessionTypes());
-    applyTherapistPaymentDetails();
-    roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
-    renderGroupDates(['']);
-    toggleGroupVisibility();
-    toggleParentMeetingsVisibility();
-    toggleLanguageEvaluationsVisibility();
-    toggleDiagnosticsVisibility();
-    toggleGroupAssessmentsVisibility();
-    toggleCourseExpensesVisibility();
-    toggleExtraRoleVisibility();
-    toggleAdditionalExpensesVisibility();
 
     document.getElementById('saveNow').addEventListener('click', () => {
         calculate();
