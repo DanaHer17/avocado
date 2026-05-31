@@ -705,7 +705,8 @@
             cancelUnpaid: cancelUnpaidDates.length,
             paidReceived: !!tr.querySelector('.paid-mark')?.checked,
             paidToCenter: !!tr.querySelector('.paid-center')?.checked,
-            paidToTherapist: !!tr.querySelector('.paid-therapist')?.checked
+            paidToTherapist: !!tr.querySelector('.paid-therapist')?.checked,
+            note: tr.querySelector('.col-note .note-input')?.value.trim() ?? ''
         };
     }
 
@@ -944,12 +945,9 @@ ${d.fullName || '—'}
             assignPatientRowOrder(tr);
             syncRowPayTargetData(tr);
             const show = rowMatchesPayFilter(tr, filter);
-            if (show) {
-                tbody.appendChild(tr);
-                visible += 1;
-            } else {
-                stashTbody.appendChild(tr);
-            }
+            const target = show ? tbody : stashTbody;
+            if (tr.parentElement !== target) target.appendChild(tr);
+            if (show) visible += 1;
         });
         renumber();
         const countEl = document.getElementById('patientPayFilterCount');
@@ -1974,6 +1972,45 @@ ${d.fullName || '—'}
         return arr;
     }
 
+    function renderRowNoteState(tr) {
+        const cell = tr.querySelector('.col-note');
+        if (!cell) return;
+        const note = (cell.querySelector('.note-input')?.value || '').trim();
+        const addBtn = cell.querySelector('.add-note-btn');
+        const display = cell.querySelector('.note-display');
+        const editBox = cell.querySelector('.note-edit');
+        const textEl = cell.querySelector('.note-text');
+        if (editBox) editBox.hidden = true;
+        if (note) {
+            if (textEl) textEl.textContent = note;
+            if (display) display.hidden = false;
+            if (addBtn) addBtn.hidden = true;
+        } else {
+            if (display) display.hidden = true;
+            if (addBtn) addBtn.hidden = false;
+        }
+    }
+
+    function setRowNoteEditing(tr, editing) {
+        const cell = tr.querySelector('.col-note');
+        if (!cell) return;
+        if (!editing) {
+            renderRowNoteState(tr);
+            return;
+        }
+        const addBtn = cell.querySelector('.add-note-btn');
+        const display = cell.querySelector('.note-display');
+        const editBox = cell.querySelector('.note-edit');
+        const input = cell.querySelector('.note-input');
+        if (addBtn) addBtn.hidden = true;
+        if (display) display.hidden = true;
+        if (editBox) editBox.hidden = false;
+        if (input) {
+            input.dataset.prev = input.value;
+            input.focus();
+        }
+    }
+
     function addRow(data) {
         const tr = document.createElement('tr');
         const defaults = {
@@ -1987,7 +2024,8 @@ ${d.fullName || '—'}
             cancelUnpaid: 0,
             paidReceived: false,
             paidToCenter: false,
-            paidToTherapist: false
+            paidToTherapist: false,
+            note: ''
         };
         const d = Object.assign({}, defaults, data && typeof data === 'object' ? data : {});
         if (d.paidToCenter && d.paidToTherapist) d.paidToTherapist = false;
@@ -2025,6 +2063,20 @@ ${d.fullName || '—'}
             <td class="col-pay-center"><input type="checkbox" class="paid-center" title="יעד תשלום — לא ניתן לסמן גם למטפלת" ${d.paidToCenter ? 'checked' : ''} /></td>
             <td class="col-pay-therapist"><input type="checkbox" class="paid-therapist" title="יעד תשלום — לא ניתן לסמן גם למרכז" ${d.paidToTherapist ? 'checked' : ''} /></td>
             <td class="row-total">0</td>
+            <td class="col-note">
+                <button type="button" class="btn-mini add-note-btn">+ הערה</button>
+                <div class="note-display" hidden>
+                    <span class="note-text"></span>
+                    <button type="button" class="btn-mini-alt edit-note-btn" title="עריכת הערה">ערוך</button>
+                </div>
+                <div class="note-edit" hidden>
+                    <textarea class="note-input" rows="2" placeholder="כתבי הערה...">${escapeHtml(d.note)}</textarea>
+                    <div class="note-edit-actions">
+                        <button type="button" class="btn-mini note-save-btn">שמור</button>
+                        <button type="button" class="btn-mini-alt note-cancel-btn">בטל</button>
+                    </div>
+                </div>
+            </td>
             <td class="no-print-col"><button type="button" class="btn btn-danger row-del">מחק</button></td>
         `;
         tr.querySelector('.row-idx')?.addEventListener('click', () => {
@@ -2100,6 +2152,38 @@ ${d.fullName || '—'}
             applyPatientTableFilter();
             schedulePersist();
         });
+        const noteCell = tr.querySelector('.col-note');
+        function bindNoteActionBtn(btn, handler) {
+            if (!btn) return;
+            let fromMouse = false;
+            // mousedown — ה-blur של textarea לא "בולע" את הלחיצה; click נשאר למקלדת בלבד
+            btn.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                fromMouse = true;
+                handler();
+            });
+            btn.addEventListener('click', (e) => {
+                if (fromMouse) {
+                    fromMouse = false;
+                    e.preventDefault();
+                    return;
+                }
+                handler();
+            });
+        }
+        bindNoteActionBtn(noteCell?.querySelector('.add-note-btn'), () => setRowNoteEditing(tr, true));
+        bindNoteActionBtn(noteCell?.querySelector('.edit-note-btn'), () => setRowNoteEditing(tr, true));
+        bindNoteActionBtn(noteCell?.querySelector('.note-save-btn'), () => {
+            setRowNoteEditing(tr, false);
+            schedulePersist();
+        });
+        bindNoteActionBtn(noteCell?.querySelector('.note-cancel-btn'), () => {
+            const input = noteCell.querySelector('.note-input');
+            if (input) input.value = input.dataset.prev || '';
+            setRowNoteEditing(tr, false);
+        });
+        renderRowNoteState(tr);
         assignPatientRowOrder(tr);
         tbody.appendChild(tr);
         applyPatientTableFilter();

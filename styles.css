@@ -324,6 +324,59 @@
             font-weight: 600;
         }
         .btn-mini-alt:hover { background: #eef2f7; color: var(--text); }
+        .col-note {
+            min-width: 7rem;
+            max-width: 12rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .col-note .note-edit[hidden],
+        .col-note .note-display[hidden],
+        .col-note .add-note-btn[hidden] {
+            display: none !important;
+        }
+        .note-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .note-text {
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            text-align: center;
+        }
+        .note-edit {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+        }
+        .note-input {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            font: inherit;
+            font-size: 0.8rem;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.35rem;
+            resize: vertical;
+            text-align: center;
+        }
+        .note-input:focus {
+            outline: 2px solid rgba(13, 148, 136, 0.35);
+            border-color: var(--accent);
+        }
+        .note-edit-actions {
+            display: flex;
+            gap: 0.35rem;
+            justify-content: center;
+        }
         .group-fields {
             margin-top: 0.85rem;
             padding-top: 0.75rem;
