@@ -82,25 +82,8 @@
             <label for="groupEnabled">האם מדריכה קבוצה?</label>
         </div>
         <div id="groupFields" class="group-fields is-hidden">
-            <div class="settings-grid">
-                <div>
-                    <label for="groupRate">שכר למפגש קבוצה</label>
-                    <input type="number" id="groupRate" min="0" step="1" value="0" />
-                </div>
-                <div>
-                    <label for="groupChildren">כמה ילדים בקבוצה</label>
-                    <input type="number" id="groupChildren" min="1" step="1" value="1" />
-                </div>
-                <div>
-                    <label>מספר מפגשי קבוצה (אוטומטי לפי תאריכים)</label>
-                    <input type="number" id="groupSessions" min="0" step="1" value="0" readonly />
-                </div>
-            </div>
-            <div style="margin-top:0.75rem;">
-                <label>תאריכי מפגשי קבוצה</label>
-                <div id="groupDateList" class="date-row-list" style="justify-content:flex-start;"></div>
-                <button type="button" class="btn-mini" id="addGroupDateBtn">+ תאריך קבוצה</button>
-            </div>
+            <div id="groupsList" class="groups-list"></div>
+            <button type="button" class="btn-mini" id="addGroupBtn">+ הוסף קבוצה נוספת</button>
         </div>
     </div>
 

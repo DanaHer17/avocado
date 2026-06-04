@@ -45,11 +45,8 @@
     const therapistPayAccountInput = document.getElementById('therapistPayAccount');
     const groupEnabledInput = document.getElementById('groupEnabled');
     const groupFields = document.getElementById('groupFields');
-    const groupRateInput = document.getElementById('groupRate');
-    const groupChildrenInput = document.getElementById('groupChildren');
-    const groupSessionsInput = document.getElementById('groupSessions');
-    const groupDateList = document.getElementById('groupDateList');
-    const addGroupDateBtn = document.getElementById('addGroupDateBtn');
+    const groupsListEl = document.getElementById('groupsList');
+    const addGroupBtn = document.getElementById('addGroupBtn');
     const bulkDateDialog = document.getElementById('bulkDateDialog');
     const bulkDateTitle = document.getElementById('bulkDateTitle');
     const bulkDateGrid = document.getElementById('bulkDateGrid');
@@ -307,19 +304,57 @@
         bulkDateDialog.showModal();
     }
 
-    function countFilledGroupDates() {
-        return Array.from(groupDateList.querySelectorAll('input.group-date, input.group-date-legacy'))
+    function defaultGroupEntry() {
+        return { rate: 0, children: 1, sessions: 0, dates: [''] };
+    }
+
+    function normalizeOneGroupEntry(raw) {
+        const g = raw && typeof raw === 'object' ? raw : {};
+        const dates = Array.isArray(g.dates) && g.dates.length ? g.dates.map((d) => String(d == null ? '' : d).trim()) : [''];
+        const filled = dates.filter(Boolean).length;
+        const sessions = Math.max(0, Math.floor(Number(g.sessions)) || 0) || filled;
+        return {
+            rate: Math.max(0, parseFloat(g.rate) || 0),
+            children: Math.max(1, Math.floor(parseFloat(g.children) || 1)),
+            sessions,
+            dates
+        };
+    }
+
+    /** תאימות לאחור: group יחיד או groups[] */
+    function normalizeGroupsPayload(raw) {
+        const base = raw && typeof raw === 'object' ? raw : {};
+        if (Array.isArray(base.groups) && base.groups.length) {
+            return {
+                enabled: base.enabled != null ? !!base.enabled : true,
+                groups: base.groups.map(normalizeOneGroupEntry)
+            };
+        }
+        const legacy = normalizeOneGroupEntry(base);
+        const hasLegacyData = !!base.enabled || legacy.rate > 0 || legacy.dates.some(Boolean);
+        return {
+            enabled: !!base.enabled || hasLegacyData,
+            groups: [legacy]
+        };
+    }
+
+    function countFilledGroupDatesInList(listEl) {
+        return Array.from(listEl.querySelectorAll('input.group-date, input.group-date-legacy'))
             .filter((i) => i.value.trim() !== '').length;
     }
 
-    function syncGroupSessionsFromDates() {
-        groupSessionsInput.value = String(countFilledGroupDates());
+    function syncGroupSessionsInBlock(block) {
+        const sessionsInput = block.querySelector('.group-sessions');
+        const dateList = block.querySelector('.group-date-list');
+        if (sessionsInput && dateList) {
+            sessionsInput.value = String(countFilledGroupDatesInList(dateList));
+        }
     }
 
-    function renderGroupDates(dates) {
+    function buildGroupDateSlotsHtml(dates) {
         const normalized = Array.isArray(dates) ? dates : [''];
         const safeDates = normalized.length ? normalized : [''];
-        groupDateList.innerHTML = safeDates
+        return safeDates
             .map((d) => {
                 const v = String(d == null ? '' : d).trim();
                 const iso = isIsoDate(v);
@@ -329,27 +364,169 @@
                 return `<span class="date-slot">${input}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
             })
             .join('');
-        syncGroupSessionsFromDates();
+    }
+
+    function createGroupBlockElement(data, index, canRemove) {
+        const g = normalizeOneGroupEntry(data);
+        const block = document.createElement('section');
+        block.className = 'group-block';
+        block.dataset.groupIndex = String(index);
+        block.innerHTML = `
+            <div class="group-block-head">
+                <h3 class="group-block-title">קבוצה ${index + 1}</h3>
+                <button type="button" class="btn-mini-alt group-remove-btn" title="הסר קבוצה זו"${canRemove ? '' : ' hidden'}>הסר קבוצה</button>
+            </div>
+            <div class="settings-grid">
+                <div>
+                    <label>שכר למפגש קבוצה</label>
+                    <input type="number" class="group-rate" min="0" step="1" value="${escapeAttr(g.rate)}" />
+                </div>
+                <div>
+                    <label>כמה ילדים בקבוצה</label>
+                    <input type="number" class="group-children" min="1" step="1" value="${escapeAttr(g.children)}" />
+                </div>
+                <div>
+                    <label>מספר מפגשי קבוצה (אוטומטי לפי תאריכים)</label>
+                    <input type="number" class="group-sessions" min="0" step="1" value="${escapeAttr(g.sessions)}" readonly />
+                </div>
+            </div>
+            <div class="group-dates-wrap">
+                <label>תאריכי מפגשי קבוצה</label>
+                <div class="date-row-list group-date-list" style="justify-content:flex-start;">${buildGroupDateSlotsHtml(g.dates)}</div>
+                <button type="button" class="btn-mini add-group-date-btn">+ תאריך קבוצה</button>
+            </div>
+        `;
+        syncGroupSessionsInBlock(block);
+        return block;
+    }
+
+    function renumberGroupBlocks() {
+        if (!groupsListEl) return;
+        const blocks = groupsListEl.querySelectorAll('.group-block');
+        blocks.forEach((block, i) => {
+            const title = block.querySelector('.group-block-title');
+            if (title) title.textContent = `קבוצה ${i + 1}`;
+            block.dataset.groupIndex = String(i);
+            const removeBtn = block.querySelector('.group-remove-btn');
+            if (removeBtn) removeBtn.hidden = blocks.length <= 1;
+        });
+    }
+
+    function renderGroups(groups) {
+        if (!groupsListEl) return;
+        const list = Array.isArray(groups) && groups.length ? groups.map(normalizeOneGroupEntry) : [defaultGroupEntry()];
+        groupsListEl.innerHTML = '';
+        list.forEach((g, i) => {
+            groupsListEl.appendChild(createGroupBlockElement(g, i, list.length > 1));
+        });
+        renumberGroupBlocks();
     }
 
     function collectGroupState() {
-        const groupDates = Array.from(groupDateList.querySelectorAll('input.group-date, input.group-date-legacy'))
-            .map((i) => i.value.trim());
+        const blocks = groupsListEl ? Array.from(groupsListEl.querySelectorAll('.group-block')) : [];
+        const groups = blocks.map((block) => {
+            const dateList = block.querySelector('.group-date-list');
+            const dates = dateList
+                ? Array.from(dateList.querySelectorAll('input.group-date, input.group-date-legacy')).map((i) => i.value.trim())
+                : [''];
+            return normalizeOneGroupEntry({
+                rate: block.querySelector('.group-rate')?.value,
+                children: block.querySelector('.group-children')?.value,
+                sessions: countFilledGroupDatesInList(dateList || document.createElement('div')),
+                dates
+            });
+        });
         return {
-            enabled: !!groupEnabledInput.checked,
-            rate: parseFloat(groupRateInput.value) || 0,
-            children: Math.max(1, Math.floor(parseFloat(groupChildrenInput.value) || 1)),
-            sessions: countFilledGroupDates(),
-            dates: groupDates
+            enabled: !!groupEnabledInput?.checked,
+            groups: groups.length ? groups : [defaultGroupEntry()]
+        };
+    }
+
+    function applyGroupState(raw) {
+        const normalized = normalizeGroupsPayload(raw);
+        if (groupEnabledInput) groupEnabledInput.checked = normalized.enabled;
+        renderGroups(normalized.groups);
+        toggleGroupVisibility();
+    }
+
+    function groupsForNewMonthFromCurrent() {
+        const g = collectGroupState();
+        if (!g.enabled) return { enabled: false, groups: [defaultGroupEntry()] };
+        return {
+            enabled: true,
+            groups: g.groups.map((gr) => ({
+                rate: gr.rate,
+                children: gr.children,
+                sessions: 0,
+                dates: ['']
+            }))
         };
     }
 
     function toggleGroupVisibility() {
-        if (groupEnabledInput.checked) {
+        if (!groupFields) return;
+        if (groupEnabledInput?.checked) {
             groupFields.classList.remove('is-hidden');
         } else {
             groupFields.classList.add('is-hidden');
         }
+    }
+
+    function wireGroupsListEvents() {
+        if (!groupsListEl) return;
+        groupsListEl.addEventListener('input', (e) => {
+            if (e.target.matches('.group-rate, .group-children, .group-date, .group-date-legacy')) {
+                const block = e.target.closest('.group-block');
+                if (block) syncGroupSessionsInBlock(block);
+                schedulePersist();
+            }
+        });
+        groupsListEl.addEventListener('change', (e) => {
+            if (e.target.matches('.group-rate, .group-children, .group-date, .group-date-legacy')) {
+                const block = e.target.closest('.group-block');
+                if (block) syncGroupSessionsInBlock(block);
+                schedulePersist();
+            }
+        });
+        groupsListEl.addEventListener('click', (e) => {
+            const block = e.target.closest('.group-block');
+            if (!block) return;
+            if (e.target.closest('.add-group-date-btn')) {
+                const dateList = block.querySelector('.group-date-list');
+                if (!dateList || dateList.querySelectorAll('.date-slot').length >= MAX_DATE_SLOTS) return;
+                const wrap = document.createElement('span');
+                wrap.className = 'date-slot';
+                wrap.innerHTML = '<input type="date" class="group-date" value="" /><button type="button" class="date-remove" title="הסר תאריך">×</button>';
+                dateList.appendChild(wrap);
+                syncGroupSessionsInBlock(block);
+                schedulePersist();
+                wrap.querySelector('input')?.focus();
+                return;
+            }
+            const removeDateBtn = e.target.closest('.date-remove');
+            if (removeDateBtn && block.contains(removeDateBtn)) {
+                const slot = removeDateBtn.closest('.date-slot');
+                const dateList = block.querySelector('.group-date-list');
+                if (!slot || !dateList) return;
+                const slots = dateList.querySelectorAll('.date-slot');
+                if (slots.length <= 1) {
+                    const inp = slot.querySelector('input');
+                    if (inp) inp.value = '';
+                } else {
+                    slot.remove();
+                }
+                syncGroupSessionsInBlock(block);
+                schedulePersist();
+                return;
+            }
+            if (e.target.closest('.group-remove-btn')) {
+                const blocks = groupsListEl.querySelectorAll('.group-block');
+                if (blocks.length <= 1) return;
+                block.remove();
+                renumberGroupBlocks();
+                schedulePersist();
+            }
+        });
     }
 
     function toggleExtraRoleVisibility() {
@@ -1081,12 +1258,7 @@ ${d.fullName || '—'}
         roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
         applyTherapistPaymentDetails(s.therapistPaymentDetails);
         meetingBonusInput.checked = !!s.meetingBonus;
-        const g = s.group || {};
-        groupEnabledInput.checked = !!g.enabled;
-        groupRateInput.value = String(g.rate == null ? 0 : g.rate);
-        groupChildrenInput.value = String(g.children == null ? 1 : g.children);
-        renderGroupDates(Array.isArray(g.dates) ? g.dates : ['']);
-        toggleGroupVisibility();
+        applyGroupState(s.group);
         applyExtrasState(s.extras);
         clearPatientTableRows();
         const rows = Array.isArray(s.rows) && s.rows.length ? s.rows : [{}];
@@ -1318,7 +1490,9 @@ ${d.fullName || '—'}
         });
         const g = collectGroupState();
         const extras = collectExtrasState();
-        const groupTotal = g.enabled ? (g.rate * g.sessions) : 0;
+        const groupTotal = g.enabled
+            ? g.groups.reduce((sum, gr) => sum + gr.rate * gr.sessions, 0)
+            : 0;
         const parentMeetingsTotal = extras.parentMeetingsEnabled
             ? extras.parentMeetings
                 .filter((x) => x.child || x.date)
@@ -1546,10 +1720,17 @@ ${d.fullName || '—'}
         aoa.push(['הוצאות קורסים - מחיר מלא (₪)', sum.courseExpensesGrossTotal]);
         aoa.push(['הוצאות קורסים - מחושב 75% (₪)', sum.courseExpensesTotal]);
         aoa.push(['מדריכת קבוצה?', sum.group.enabled ? 'כן' : 'לא']);
-        aoa.push(['תעריף קבוצה', sum.group.rate, 'ילדים בקבוצה (לתיעוד)', sum.group.children, 'מפגשי קבוצה', sum.group.sessions]);
-        aoa.push(['נוסחת קבוצה', 'תעריף × מפגשים (ללא כפל ילדים)']);
-        aoa.push(['תאריכי קבוצה', (sum.group.dates || []).filter(Boolean).join(', ')]);
-        aoa.push(['סה״כ קבוצה (₪)', sum.groupTotal]);
+        aoa.push(['נוסחת קבוצה', 'תעריף × מפגשים (ללא כפל ילדים) — לכל קבוצה בנפרד']);
+        if (sum.group.enabled && Array.isArray(sum.group.groups)) {
+            sum.group.groups.forEach((gr, i) => {
+                aoa.push([]);
+                aoa.push([`קבוצה ${i + 1}`]);
+                aoa.push(['תעריף', gr.rate, 'ילדים (לתיעוד)', gr.children, 'מפגשים', gr.sessions]);
+                aoa.push(['תאריכים', (gr.dates || []).filter(Boolean).join(', ')]);
+                aoa.push(['סכום קבוצה (₪)', gr.rate * gr.sessions]);
+            });
+        }
+        aoa.push(['סה״כ כל הקבוצות (₪)', sum.groupTotal]);
         aoa.push(['סה״כ למטפלת (₪)', sum.grandTotal]);
 
         if (sum.extras.parentMeetingsEnabled && sum.extras.parentMeetings.length) {
@@ -1687,7 +1868,13 @@ ${d.fullName || '—'}
             `<strong>המרכז חייב למטפלת (במלוא הסכום):</strong> ${sum.centerOwesTherapistTotal} ₪<br>` +
             `<strong>הוצאות קורסים (מחיר מלא):</strong> ${sum.courseExpensesGrossTotal} ₪ &nbsp;|&nbsp; <strong>מחושב 75%:</strong> ${sum.courseExpensesTotal} ₪<br>` +
             `<strong>קבוצה:</strong> ${sum.group.enabled ? 'כן' : 'לא'}<br>` +
-            `${sum.group.enabled ? `<strong>תעריף קבוצה:</strong> ${sum.group.rate} ₪ &nbsp;|&nbsp; <strong>ילדים:</strong> ${sum.group.children} &nbsp;|&nbsp; <strong>מפגשים:</strong> ${sum.group.sessions}<br><strong>נוסחה:</strong> תעריף × מפגשים (ללא כפל ילדים)<br><strong>תאריכי קבוצה:</strong> ${escapeHtml((sum.group.dates || []).filter(Boolean).join(', '))}<br><strong>סה״כ קבוצה:</strong> ${sum.groupTotal} ₪<br>` : ''}` +
+            `${sum.group.enabled && Array.isArray(sum.group.groups)
+                ? sum.group.groups.map((gr, i) =>
+                    `<strong>קבוצה ${i + 1}:</strong> תעריף ${gr.rate} ₪ &nbsp;|&nbsp; ילדים ${gr.children} &nbsp;|&nbsp; מפגשים ${gr.sessions}<br>` +
+                    `<strong>תאריכים:</strong> ${escapeHtml((gr.dates || []).filter(Boolean).join(', '))} &nbsp;|&nbsp; <strong>סכום:</strong> ${gr.rate * gr.sessions} ₪<br>`
+                ).join('') +
+                `<strong>סה״כ כל הקבוצות:</strong> ${sum.groupTotal} ₪<br>`
+                : ''}` +
             `<strong>סה״כ למטפלת:</strong> ${sum.grandTotal} ₪</p>` +
             '</body></html>';
         const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
@@ -1782,6 +1969,7 @@ ${d.fullName || '—'}
         const baseSalary = baseSalaryInput?.value;
         const clientRate = clientRateInput?.value;
         const meetingBonus = meetingBonusInput?.checked;
+        const monthGroups = groupsForNewMonthFromCurrent();
         const existingReport = store.reportsByPeriod[nextPeriod];
         const newReport = existingReport
             ? Object.assign({}, existingReport, {
@@ -1796,7 +1984,7 @@ ${d.fullName || '—'}
                 sessionTypes: collectSessionTypes(),
                 therapistPaymentDetails: collectTherapistPaymentDetails(),
                 meetingBonus,
-                group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+                group: monthGroups,
                 extras: emptyExtrasState(),
                 rows: rowsFromTemplate(names)
             };
@@ -1849,7 +2037,7 @@ ${d.fullName || '—'}
                 sessionTypes: currentState.sessionTypes,
                 therapistPaymentDetails: currentState.therapistPaymentDetails,
                 meetingBonus: currentState.meetingBonus,
-                group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+                group: { enabled: false, groups: [defaultGroupEntry()] },
                 extras: emptyExtrasState(),
                 rows: rowsFromTemplate(names)
             };
@@ -2334,7 +2522,7 @@ ${d.fullName || '—'}
                 sessionTypes: collectSessionTypes(),
                 therapistPaymentDetails: collectTherapistPaymentDetails(),
                 meetingBonus: meetingBonusInput?.checked,
-                group: { enabled: false, rate: 0, children: 1, sessions: 0, dates: [''] },
+                group: { enabled: false, groups: [defaultGroupEntry()] },
                 extras: emptyExtrasState(),
                 rows: rowsFromTemplate(store.patientTemplate)
             });
@@ -2352,8 +2540,9 @@ ${d.fullName || '—'}
     applySessionTypes(defaultSessionTypes());
     applyTherapistPaymentDetails();
     roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
-    renderGroupDates(['']);
+    renderGroups([defaultGroupEntry()]);
     toggleGroupVisibility();
+    wireGroupsListEvents();
     toggleParentMeetingsVisibility();
     toggleLanguageEvaluationsVisibility();
     toggleDiagnosticsVisibility();
@@ -2425,43 +2614,19 @@ ${d.fullName || '—'}
         toggleGroupVisibility();
         schedulePersist();
     });
-    [groupRateInput, groupChildrenInput].forEach((el) => {
-        el.addEventListener('input', schedulePersist);
-        el.addEventListener('change', schedulePersist);
-    });
-    addGroupDateBtn.addEventListener('click', () => {
-        if (groupDateList.querySelectorAll('.date-slot').length >= MAX_DATE_SLOTS) return;
-        const wrap = document.createElement('span');
-        wrap.className = 'date-slot';
-        wrap.innerHTML = '<input type="date" class="group-date" value="" /><button type="button" class="date-remove" title="הסר תאריך">×</button>';
-        groupDateList.appendChild(wrap);
-        syncGroupSessionsFromDates();
-        schedulePersist();
-        wrap.querySelector('input')?.focus();
-    });
-    groupDateList.addEventListener('input', (e) => {
-        if (!e.target.matches('.group-date, .group-date-legacy')) return;
-        syncGroupSessionsFromDates();
-        schedulePersist();
-    });
-    groupDateList.addEventListener('change', (e) => {
-        if (!e.target.matches('.group-date, .group-date-legacy')) return;
-        syncGroupSessionsFromDates();
-        schedulePersist();
-    });
-    groupDateList.addEventListener('click', (e) => {
-        const btn = e.target.closest('.date-remove');
-        if (!btn || !groupDateList.contains(btn)) return;
-        const slot = btn.closest('.date-slot');
-        if (!slot) return;
-        const slots = groupDateList.querySelectorAll('.date-slot');
-        if (slots.length <= 1) {
-            const inp = slot.querySelector('input');
-            if (inp) inp.value = '';
-        } else {
-            slot.remove();
-        }
-        syncGroupSessionsFromDates();
+    addGroupBtn?.addEventListener('click', () => {
+        if (!groupsListEl) return;
+        const current = collectGroupState().groups;
+        const last = current.length ? current[current.length - 1] : defaultGroupEntry();
+        const next = {
+            rate: last.rate,
+            children: last.children,
+            sessions: 0,
+            dates: ['']
+        };
+        const index = groupsListEl.querySelectorAll('.group-block').length;
+        groupsListEl.appendChild(createGroupBlockElement(next, index, true));
+        renumberGroupBlocks();
         schedulePersist();
     });
 
