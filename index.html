@@ -35,7 +35,7 @@
             </div>
             <div class="check-row">
                 <input type="checkbox" id="meetingBonus" />
-                <label for="meetingBonus">השתתפות בישיבה חודשית — +5 ₪ לשכר הבסיס לכל מפגש שמחושב</label>
+                <label for="meetingBonus">השתתפות בישיבה חודשית — +5 ₪ לשכר הבסיס ולתעריפי סוגי מפגש (רגשית / עיסוק) לכל מפגש שמחושב</label>
             </div>
         </div>
     </div>
@@ -127,8 +127,19 @@
     <div class="card summary">
         <h2>סיכום לתשלום מהמרכז</h2>
         <dl>
-            <dt>שכר בסיס + בונוס ישיבה (למפגש)</dt>
+            <dt id="effectiveRateLabel">תעריפים למטפלת (כולל בונוס ישיבה)</dt>
             <dd id="effectiveRate">0</dd>
+            <div class="summary-component-block is-hidden" id="effectiveRatesDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="effectiveRatesDetailToggle" data-panel="effectiveRatesDetailPanel" aria-expanded="false">
+                        <span>פירוט תעריפים</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="effectiveRatesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="effectiveRatesDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
             <dt>סה״כ מפגשים לחישוב (מפגשים + ביטולים בתשלום)</dt>
             <dd id="totalBillable">0</dd>
             <dt>סה״כ ביטולים ללא תשלום (תיעוד)</dt>
@@ -414,7 +425,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260611d"></script>
+<script src="app.js?v=20260611h"></script>
 
 </body>
 </html>

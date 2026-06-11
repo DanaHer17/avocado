@@ -128,10 +128,39 @@
         centerOwesTherapistDetail: document.getElementById('centerOwesTherapistDetail')
     };
 
+    function meetingBonusAmount() {
+        return meetingBonusInput?.checked ? 5 : 0;
+    }
+
     function effectiveRate() {
         const base = parseFloat(baseSalaryInput?.value) || 0;
-        const bonus = meetingBonusInput?.checked ? 5 : 0;
-        return base + bonus;
+        return base + meetingBonusAmount();
+    }
+
+    function therapistPayForSessionType(st, fallbackTherapistRate) {
+        if (st) return Math.max(0, parseFloat(st.therapistPrice) || 0) + meetingBonusAmount();
+        return fallbackTherapistRate;
+    }
+
+    function buildEffectiveTherapistRates() {
+        const base = effectiveRate();
+        if (!roleUsesSessionTypes()) {
+            return [{ label: 'שכר בסיס', amount: base }];
+        }
+        return collectSessionTypes().map((st) => {
+            const name = String(st.name || '').trim() || 'סוג מפגש';
+            return {
+                label: name,
+                amount: therapistPayForSessionType(st, base)
+            };
+        });
+    }
+
+    function formatEffectiveRatesExportText(rates) {
+        const list = Array.isArray(rates) ? rates : buildEffectiveTherapistRates();
+        if (!list.length) return `${effectiveRate()} ₪`;
+        if (list.length <= 1) return `${list[0].amount} ₪`;
+        return list.map((r) => `${r.label} ${r.amount} ₪`).join(' · ');
     }
 
     function activeRole() {
@@ -930,7 +959,7 @@
             if (role !== ROLE_SPEECH) {
                 const st = stMap[String(entry.sessionTypeId || '')];
                 gross += st ? st.fullPrice : clientRate;
-                therapist += st ? st.therapistPrice : therapistRate;
+                therapist += therapistPayForSessionType(st, therapistRate);
             } else {
                 gross += clientRate;
                 therapist += therapistRate;
@@ -1541,6 +1570,7 @@ ${d.fullName || '—'}
         const netSettlement = remainingToTherapist - remainingToCenter;
         return {
             rate,
+            effectiveTherapistRates: buildEffectiveTherapistRates(),
             clientRate,
             totalBillable,
             totalUnpaid,
@@ -1593,6 +1623,50 @@ ${d.fullName || '—'}
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
+    }
+
+    function renderEffectiveRatesSummary(rates) {
+        const list = Array.isArray(rates) ? rates : buildEffectiveTherapistRates();
+        const usesTypes = roleUsesSessionTypes();
+        const block = document.getElementById('effectiveRatesDetailBlock');
+        const panel = document.getElementById('effectiveRatesDetailPanel');
+        const toggle = document.getElementById('effectiveRatesDetailToggle');
+        const container = document.getElementById('effectiveRatesDetail');
+        const labelEl = document.getElementById('effectiveRateLabel');
+        if (labelEl) {
+            labelEl.textContent = usesTypes
+                ? 'תעריפים למטפלת (כולל בונוס ישיבה)'
+                : 'שכר בסיס + בונוס ישיבה (למפגש)';
+        }
+        if (summaryEls.effectiveRate) {
+            if (!usesTypes) {
+                summaryEls.effectiveRate.textContent = list[0].amount.toLocaleString('he-IL');
+            } else if (list.length <= 1) {
+                summaryEls.effectiveRate.textContent = (list[0]?.amount ?? 0).toLocaleString('he-IL');
+            } else {
+                summaryEls.effectiveRate.textContent = 'לפי סוג מפגש';
+            }
+        }
+        if (!usesTypes || list.length <= 1) {
+            if (container) container.innerHTML = '';
+            if (block) block.classList.add('is-hidden');
+            if (panel) panel.classList.add('is-collapsed');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+                const chev = toggle.querySelector('.summary-extra-chevron');
+                if (chev) chev.textContent = '▸';
+            }
+            return;
+        }
+        if (block) block.classList.remove('is-hidden');
+        if (container) {
+            container.innerHTML = list
+                .map((r) =>
+                    `<li><span class="summary-item-name">${escapeHtml(r.label)}</span>` +
+                    `<span class="summary-item-amount">${r.amount.toLocaleString('he-IL')} ₪</span></li>`
+                )
+                .join('');
+        }
     }
 
     function renderSummaryItemList(container, items, labelFn, amountFn, ui) {
@@ -1652,6 +1726,9 @@ ${d.fullName || '—'}
         aoa.push(['דוח סיכום טיפולים']);
         aoa.push(['חודש / תקופה', period]);
         aoa.push(['שכר בסיס למטפלת', s.baseSalary, 'מחיר לטיפול פרטני', s.clientRate, 'ישיבה חודשית (+5)', s.meetingBonus ? 'כן' : 'לא']);
+        sum.effectiveTherapistRates.forEach((r) => {
+            aoa.push([`${r.label} (למטפלת, כולל בונוס)`, r.amount]);
+        });
         aoa.push([]);
         aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום (תאריכים)', 'ביטול ללא תשלום (תאריכים)', 'שולם', 'יעד תשלום', 'למרכז', 'למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
         getAllPatientTableRows().forEach((tr, i) => {
@@ -1848,7 +1925,7 @@ ${d.fullName || '—'}
             `<p>חודש / תקופה: ${escapeHtml(period)} &nbsp;|&nbsp; שכר בסיס: ${escapeHtml(s.baseSalary)} &nbsp;|&nbsp; מחיר לטיפול פרטני: ${escapeHtml(s.clientRate)} &nbsp;|&nbsp; ישיבה חודשית: ${s.meetingBonus ? 'כן' : 'לא'}</p>` +
             `<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">${tableRows}</table>` +
             routingBlock +
-            `<p><strong>תעריף למפגש:</strong> ${sum.rate} ₪<br>` +
+            `<p><strong>תעריפים למטפלת (כולל בונוס ישיבה):</strong> ${escapeHtml(formatEffectiveRatesExportText(sum.effectiveTherapistRates))}<br>` +
             `<strong>סה״כ מפגשים לחישוב:</strong> ${sum.totalBillable}<br>` +
             `<strong>סה״כ ביטולים ללא תשלום:</strong> ${sum.totalUnpaid}<br>` +
             `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
@@ -2406,9 +2483,8 @@ ${d.fullName || '—'}
     function calculate() {
         updateAllRowPaidStyles();
         updatePatientTableLayoutMode();
-        const rate = effectiveRate();
         const clientRate = parseFloat(clientRateInput?.value) || 0;
-        summaryEls.effectiveRate.textContent = rate.toLocaleString('he-IL');
+        renderEffectiveRatesSummary();
 
         getAllPatientTableRows().forEach(tr => {
             syncSessionsFromDates(tr);
