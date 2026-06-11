@@ -206,6 +206,11 @@
             outline: none;
         }
         .col-num input { width: 3rem; }
+        .col-num input.sessions[readonly] {
+            background: #f8fafc;
+            color: var(--muted);
+            cursor: default;
+        }
         .col-dates { text-align: right; min-width: 12rem; max-width: 28rem; }
         .date-row-list {
             display: flex;

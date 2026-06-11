@@ -236,12 +236,9 @@
     function syncSessionsFromDates(tr) {
         const inp = tr.querySelector('.sessions');
         if (!inp) return;
-        const filled = countFilledDates(tr);
-        inp.value = String(filled);
-        inp.readOnly = filled > 0;
-        inp.title = filled > 0
-            ? 'מתעדכן אוטומטית לפי תאריכים'
-            : 'הזיני מספר מפגשים אם אין תאריכים';
+        inp.value = String(countFilledDates(tr));
+        inp.readOnly = true;
+        inp.title = 'מתעדכן אוטומטית לפי תאריכים';
     }
 
     function formatRowTotalLabel(gross, meetings, paidCancelCount) {
@@ -873,8 +870,6 @@
             openBulkDatePickerForRow(tr);
         });
 
-        tr.querySelector('.sessions')?.addEventListener('input', schedulePersist);
-        tr.querySelector('.sessions')?.addEventListener('change', schedulePersist);
     }
 
     function rowDataFromTr(tr) {
@@ -894,7 +889,7 @@
             name: tr.querySelector('.col-name input')?.value.trim() ?? '',
             dates,
             sessionEntries,
-            sessions: sessionEntries.length || parseFloat(tr.querySelector('.sessions')?.value) || 0,
+            sessions: sessionEntries.length,
             cancelPaidEntries,
             cancelUnpaidDates,
             cancelPaid: cancelPaidEntries.length,
@@ -941,22 +936,6 @@
                 therapist += therapistRate;
             }
         });
-        if (meetings === 0) {
-            const manual = Math.max(0, Math.floor(parseFloat(rd.sessions) || 0));
-            if (manual > 0) {
-                meetings = manual;
-                if (role !== ROLE_SPEECH) {
-                    const firstType = Object.values(stMap)[0];
-                    const fp = firstType ? firstType.fullPrice : clientRate;
-                    const tp = firstType ? firstType.therapistPrice : therapistRate;
-                    gross = manual * fp;
-                    therapist = manual * tp;
-                } else {
-                    gross = manual * clientRate;
-                    therapist = manual * therapistRate;
-                }
-            }
-        }
         return { meetings, gross, therapist };
     }
 
@@ -2266,7 +2245,7 @@ ${d.fullName || '—'}
                     <button type="button" class="btn-mini-alt bulk-date-btn">בחירה מרוכזת</button>
                 </div>
             </td>
-            <td class="col-num"><input type="number" class="sessions" min="0" step="1" value="${n(d.sessions)}" title="מתעדכן אוטומטית לפי תאריכים; אפשר לתקן ידנית" /></td>
+            <td class="col-num"><input type="number" class="sessions" min="0" step="1" value="${n(d.sessions)}" readonly tabindex="-1" title="מתעדכן אוטומטית לפי תאריכים" /></td>
             <td class="cancel-cell">
                 <div class="cancel-row-list cancel-paid-list">${cancelPaidHtml}</div>
                 <button type="button" class="btn-mini add-cancel-paid-btn">+ ביטול בתשלום</button>
@@ -2358,11 +2337,7 @@ ${d.fullName || '—'}
             schedulePersist();
         });
         wireDateRow(tr);
-        const savedSessionCount = n(d.sessions);
         syncSessionsFromDates(tr);
-        if (countFilledDates(tr) === 0 && savedSessionCount > 0) {
-            tr.querySelector('.sessions').value = String(savedSessionCount);
-        }
         tr.querySelector('.row-del').addEventListener('click', () => {
             tr.remove();
             renumber();
