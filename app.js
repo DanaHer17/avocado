@@ -221,28 +221,19 @@
         return /^\d{4}-\d{2}-\d{2}$/.test(String(s).trim());
     }
 
-    function countFilledDates(tr) {
-        return Array.from(tr.querySelectorAll('.date-row-list .date-slot input.sess-date, .date-row-list .date-slot input.sess-date-legacy'))
-            .filter((i) => i.value.trim() !== '').length;
+    function sessionDateSlotsInList(list) {
+        if (!list) return [];
+        return Array.from(list.querySelectorAll(':scope > .date-slot'));
     }
 
-    function pruneEmptyDateSlotsInRow(tr) {
+    function countFilledDates(tr) {
         const list = tr.querySelector('.date-row-list');
-        if (!list) return;
-        const slots = Array.from(list.querySelectorAll('.date-slot'));
-        const filled = slots.filter((slot) => {
-            const v = slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '';
-            return !!v;
-        });
-        if (!filled.length) return;
-        slots.forEach((slot) => {
-            const v = slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '';
-            if (!v) slot.remove();
-        });
+        return sessionDateSlotsInList(list)
+            .map((slot) => slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '')
+            .filter(Boolean).length;
     }
 
     function syncSessionsFromDates(tr) {
-        pruneEmptyDateSlotsInRow(tr);
         const inp = tr.querySelector('.sessions');
         if (!inp) return;
         const filled = countFilledDates(tr);
@@ -857,7 +848,7 @@
             if (!btn || !list.contains(btn)) return;
             const slot = btn.closest('.date-slot');
             if (!slot) return;
-            const slots = list.querySelectorAll('.date-slot');
+            const slots = sessionDateSlotsInList(list);
             if (slots.length <= 1) {
                 const inp = slot.querySelector('input');
                 if (inp) inp.value = '';
@@ -869,15 +860,13 @@
         });
 
         addBtn.addEventListener('click', () => {
-            if (list.querySelectorAll('.date-slot').length >= MAX_DATE_SLOTS) return;
-            const wrap = document.createElement('span');
-            wrap.className = 'date-slot';
-            wrap.innerHTML = buildDateSlotHtml({ date: '', sessionTypeId: '' });
-            list.appendChild(wrap);
+            if (sessionDateSlotsInList(list).length >= MAX_DATE_SLOTS) return;
+            list.insertAdjacentHTML('beforeend', buildDateSlotHtml({ date: '', sessionTypeId: '' }));
+            const wrap = list.lastElementChild;
             syncSessionsFromDates(tr);
             updateSessionSlotColorsInRow(tr);
             schedulePersist();
-            wrap.querySelector('input')?.focus();
+            wrap?.querySelector('input')?.focus();
         });
 
         bulkBtn.addEventListener('click', () => {
@@ -2141,7 +2130,8 @@ ${d.fullName || '—'}
     }
 
     function readSessionEntriesFromRow(tr) {
-        return Array.from(tr.querySelectorAll('.date-row-list .date-slot')).map((slot) => ({
+        const list = tr.querySelector('.date-row-list');
+        return sessionDateSlotsInList(list).map((slot) => ({
             date: slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '',
             sessionTypeId: slot.querySelector('.sess-type-select')?.value || ''
         }));
