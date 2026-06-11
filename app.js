@@ -222,14 +222,44 @@
     }
 
     function countFilledDates(tr) {
-        return Array.from(tr.querySelectorAll('.date-slot input.sess-date, .date-slot input.sess-date-legacy'))
-            .filter(i => i.value.trim() !== '').length;
+        return Array.from(tr.querySelectorAll('.date-row-list .date-slot input.sess-date, .date-row-list .date-slot input.sess-date-legacy'))
+            .filter((i) => i.value.trim() !== '').length;
+    }
+
+    function pruneEmptyDateSlotsInRow(tr) {
+        const list = tr.querySelector('.date-row-list');
+        if (!list) return;
+        const slots = Array.from(list.querySelectorAll('.date-slot'));
+        const filled = slots.filter((slot) => {
+            const v = slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '';
+            return !!v;
+        });
+        if (!filled.length) return;
+        slots.forEach((slot) => {
+            const v = slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '';
+            if (!v) slot.remove();
+        });
     }
 
     function syncSessionsFromDates(tr) {
+        pruneEmptyDateSlotsInRow(tr);
         const inp = tr.querySelector('.sessions');
         if (!inp) return;
-        inp.value = String(countFilledDates(tr));
+        const filled = countFilledDates(tr);
+        inp.value = String(filled);
+        inp.readOnly = filled > 0;
+        inp.title = filled > 0
+            ? 'מתעדכן אוטומטית לפי תאריכים'
+            : 'הזיני מספר מפגשים אם אין תאריכים';
+    }
+
+    function formatRowTotalLabel(gross, meetings, paidCancelCount) {
+        if (!gross) return '—';
+        const parts = [];
+        if (meetings > 0) parts.push(`${meetings} מפגשים`);
+        if (paidCancelCount > 0) parts.push(`${paidCancelCount} ביטול בתשלום`);
+        const detail = parts.length ? ` (${parts.join(' + ')})` : '';
+        return gross.toLocaleString('he-IL') + ' ₪' + detail;
     }
 
     function buildDateSlotHtml(entry) {
@@ -859,7 +889,7 @@
     }
 
     function rowDataFromTr(tr) {
-        const sessionEntries = readSessionEntriesFromRow(tr);
+        const sessionEntries = readSessionEntriesFromRow(tr).filter((x) => String(x.date || '').trim());
         const dates = sessionEntries.map((x) => x.date);
         const cancelPaidEntries = Array.from(tr.querySelectorAll('.cancel-paid-list .cancel-slot')).map((slot) => {
             const mode = slot.querySelector('.cancel-paid-mode')?.value === 'custom' ? 'custom' : 'full';
@@ -875,7 +905,7 @@
             name: tr.querySelector('.col-name input')?.value.trim() ?? '',
             dates,
             sessionEntries,
-            sessions: parseFloat(tr.querySelector('.sessions')?.value) || 0,
+            sessions: sessionEntries.length || parseFloat(tr.querySelector('.sessions')?.value) || 0,
             cancelPaidEntries,
             cancelUnpaidDates,
             cancelPaid: cancelPaidEntries.length,
@@ -1192,10 +1222,11 @@ ${d.fullName || '—'}
 
     function refreshDateSlotsForRoleChange() {
         getAllPatientTableRows().forEach((tr) => {
-            const entries = readSessionEntriesFromRow(tr);
+            const entries = readSessionEntriesFromRow(tr).filter((x) => String(x.date || '').trim());
             const list = tr.querySelector('.date-row-list');
             if (!list) return;
-            list.innerHTML = entries.map((e) => buildDateSlotHtml(e)).join('');
+            const toRender = entries.length ? entries : [{ date: '', sessionTypeId: '' }];
+            list.innerHTML = toRender.map((e) => buildDateSlotHtml(e)).join('');
             syncSessionsFromDates(tr);
             updateSessionSlotColorsInRow(tr);
         });
@@ -2094,6 +2125,9 @@ ${d.fullName || '—'}
                 return t === 'undefined' || t === 'null' ? '' : t;
             })
             : [];
+        const filled = arr.filter(Boolean);
+        if (filled.length) return filled;
+
         while (arr.length > 1 && arr[arr.length - 1] === '') arr.pop();
         if (arr.length === 0) arr.push('');
 
@@ -2120,10 +2154,15 @@ ${d.fullName || '—'}
                 sessionTypeId: String((x && x.sessionTypeId) == null ? '' : x.sessionTypeId).trim()
             }))
             : [];
+        if (entries.length && !entries.some((e) => e.date)) {
+            entries = [];
+        }
         if (!entries.length) {
             const d = normalizeDatesArray(dates, fallbackSessions);
             entries = d.map((date) => ({ date, sessionTypeId: '' }));
         }
+        const filled = entries.filter((e) => e.date);
+        if (filled.length) return filled;
         if (!entries.length) entries = [{ date: '', sessionTypeId: '' }];
         return entries;
     }
@@ -2407,6 +2446,7 @@ ${d.fullName || '—'}
         summaryEls.effectiveRate.textContent = rate.toLocaleString('he-IL');
 
         getAllPatientTableRows().forEach(tr => {
+            syncSessionsFromDates(tr);
             const rd = rowDataFromTr(tr);
             const sessionsPart = sessionBreakdownFromRow(rd, {
                 role: activeRole(),
@@ -2422,9 +2462,10 @@ ${d.fullName || '—'}
                     return { date, amount };
                 })
                 .filter((x) => x.date);
+            const paidCancelCount = paidCancelEntries.length;
             const rowTotal = sessionsPart.gross + paidCancelEntries.reduce((sum, x) => sum + x.amount, 0);
             tr.querySelector('.row-total').textContent =
-                rowTotal ? rowTotal.toLocaleString('he-IL') + ' ₪' : '—';
+                formatRowTotalLabel(rowTotal, sessionsPart.meetings, paidCancelCount);
         });
 
         const sum = getSummary();
