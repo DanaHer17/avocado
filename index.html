@@ -124,118 +124,6 @@
         </div>
     </div>
 
-    <div class="card summary">
-        <h2>סיכום לתשלום מהמרכז</h2>
-        <dl>
-            <dt id="effectiveRateLabel">תעריפים למטפלת (כולל בונוס ישיבה)</dt>
-            <dd id="effectiveRate">0</dd>
-            <div class="summary-component-block is-hidden" id="effectiveRatesDetailBlock">
-                <div class="summary-extra-toggle-row">
-                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="effectiveRatesDetailToggle" data-panel="effectiveRatesDetailPanel" aria-expanded="false">
-                        <span>פירוט תעריפים</span>
-                        <span class="summary-extra-chevron">▸</span>
-                    </button>
-                </div>
-                <div id="effectiveRatesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
-                    <ul id="effectiveRatesDetail" class="summary-item-list"></ul>
-                </div>
-            </div>
-            <dt>סה״כ מפגשים לחישוב (מפגשים + ביטולים בתשלום)</dt>
-            <dd id="totalBillable">0</dd>
-            <dt>סה״כ ביטולים ללא תשלום (תיעוד)</dt>
-            <dd id="totalUnpaidCancels">0</dd>
-            <dt>סה״כ פרטני</dt>
-            <dd id="individualTotal">0</dd>
-            <dt>סה״כ קבוצה</dt>
-            <dd id="groupTotal">0</dd>
-            <dt>פגישות הורים (למטפלת)</dt>
-            <dd id="parentMeetingsTotal">0</dd>
-            <dt>הערכות שפה (למטפלת)</dt>
-            <dd id="languageEvalTherapistTotal">0</dd>
-            <dt>הערכות שפה (למרכז)</dt>
-            <dd id="languageEvalCenterTotal">0</dd>
-            <dt>אבחונים (למטפלת)</dt>
-            <dd id="diagnosticsTotal">0</dd>
-            <dt>מפגשי הערכה לילדי קבוצה</dt>
-            <dd id="groupAssessmentsTotal">0</dd>
-            <dt>תפקידים נוספים (למטפלת)</dt>
-            <dd id="extraRolesTotal">0</dd>
-            <div class="summary-component-block is-hidden" id="extraRolesDetailBlock">
-                <div class="summary-extra-toggle-row">
-                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="extraRolesDetailToggle" data-panel="extraRolesDetailPanel" aria-expanded="false">
-                        <span>פירוט תפקידים</span>
-                        <span class="summary-extra-chevron">▸</span>
-                    </button>
-                </div>
-                <div id="extraRolesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
-                    <ul id="extraRolesDetail" class="summary-item-list"></ul>
-                </div>
-            </div>
-            <dt>חייבת למרכז (במלוא הסכום)</dt>
-            <dd id="additionalExpensesTotal">0</dd>
-            <div class="summary-component-block is-hidden" id="additionalExpensesDetailBlock">
-                <div class="summary-extra-toggle-row">
-                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="additionalExpensesDetailToggle" data-panel="additionalExpensesDetailPanel" aria-expanded="false">
-                        <span>פירוט חיוב למרכז</span>
-                        <span class="summary-extra-chevron">▸</span>
-                    </button>
-                </div>
-                <div id="additionalExpensesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
-                    <ul id="additionalExpensesDetail" class="summary-item-list"></ul>
-                </div>
-            </div>
-            <dt>המרכז חייב למטפלת (במלוא הסכום)</dt>
-            <dd id="centerOwesTherapistTotal">0</dd>
-            <div class="summary-component-block is-hidden" id="centerOwesTherapistDetailBlock">
-                <div class="summary-extra-toggle-row">
-                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="centerOwesTherapistDetailToggle" data-panel="centerOwesTherapistDetailPanel" aria-expanded="false">
-                        <span>פירוט חוב מהמרכז</span>
-                        <span class="summary-extra-chevron">▸</span>
-                    </button>
-                </div>
-                <div id="centerOwesTherapistDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
-                    <ul id="centerOwesTherapistDetail" class="summary-item-list"></ul>
-                </div>
-            </div>
-            <dt>הוצאות קורסים (75% מהסכום)</dt>
-            <dd id="courseExpensesTotal">0</dd>
-        </dl>
-        <div class="summary-extra-toggle-row">
-            <button type="button" class="summary-extra-toggle" id="extraCalcsToggle" aria-expanded="true">
-                <span>חישובים נוספים</span>
-                <span class="summary-extra-chevron">▾</span>
-            </button>
-        </div>
-        <div id="extraCalcsPanel" class="summary-extra-panel">
-            <div class="summary-settlement-block">
-                <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
-                <dd id="grossIndividualTotal">0</dd>
-                <dt>חלק המרכז (לאחר התאמות)</dt>
-                <dd id="centerTotal">0</dd>
-                <div class="summary-pay-zone summary-pay-zone-center">
-                    <dt>למרכז (לפי סימון יעד)</dt>
-                    <dd id="paidToCenterTotal">0</dd>
-                    <dt>מפגשי טיפול לתשלום למרכז</dt>
-                    <dd id="paidToCenterTreatmentCount">0</dd>
-                    <dt>יתרה למרכז (כמה אני חייבת למרכז)</dt>
-                    <dd id="remainingToCenter">0</dd>
-                </div>
-                <div class="summary-pay-zone summary-pay-zone-therapist">
-                    <dt>למטפלת (לפי סימון יעד)</dt>
-                    <dd id="paidToTherapistTotal">0</dd>
-                    <dt>מפגשי טיפול לתשלום למטפלת</dt>
-                    <dd id="paidToTherapistTreatmentCount">0</dd>
-                    <dt>יתרה למטפלת (כמה המרכז חייב לי)</dt>
-                    <dd id="remainingToTherapist">0</dd>
-                </div>
-            </div>
-            <div class="grand extra-grand">
-                נטו אחרי קיזוז: <span id="netSettlementText">אין יתרה</span>
-            </div>
-        </div>
-        <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
-    </div>
-
     <div class="card">
         <h2 style="font-size:1rem;margin:0 0 0.75rem;">רכיבים אופציונליים לשכר</h2>
         <div class="extras-grid">
@@ -373,6 +261,118 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="card summary">
+        <h2>סיכום לתשלום מהמרכז</h2>
+        <dl>
+            <dt id="effectiveRateLabel">תעריפים למטפלת (כולל בונוס ישיבה)</dt>
+            <dd id="effectiveRate">0</dd>
+            <div class="summary-component-block is-hidden" id="effectiveRatesDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="effectiveRatesDetailToggle" data-panel="effectiveRatesDetailPanel" aria-expanded="false">
+                        <span>פירוט תעריפים</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="effectiveRatesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="effectiveRatesDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
+            <dt>סה״כ מפגשים לחישוב (מפגשים + ביטולים בתשלום)</dt>
+            <dd id="totalBillable">0</dd>
+            <dt>סה״כ ביטולים ללא תשלום (תיעוד)</dt>
+            <dd id="totalUnpaidCancels">0</dd>
+            <dt>סה״כ פרטני</dt>
+            <dd id="individualTotal">0</dd>
+            <dt>סה״כ קבוצה</dt>
+            <dd id="groupTotal">0</dd>
+            <dt>פגישות הורים (למטפלת)</dt>
+            <dd id="parentMeetingsTotal">0</dd>
+            <dt>הערכות שפה (למטפלת)</dt>
+            <dd id="languageEvalTherapistTotal">0</dd>
+            <dt>הערכות שפה (למרכז)</dt>
+            <dd id="languageEvalCenterTotal">0</dd>
+            <dt>אבחונים (למטפלת)</dt>
+            <dd id="diagnosticsTotal">0</dd>
+            <dt>מפגשי הערכה לילדי קבוצה</dt>
+            <dd id="groupAssessmentsTotal">0</dd>
+            <dt>תפקידים נוספים (למטפלת)</dt>
+            <dd id="extraRolesTotal">0</dd>
+            <div class="summary-component-block is-hidden" id="extraRolesDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="extraRolesDetailToggle" data-panel="extraRolesDetailPanel" aria-expanded="false">
+                        <span>פירוט תפקידים</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="extraRolesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="extraRolesDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
+            <dt>חייבת למרכז (במלוא הסכום)</dt>
+            <dd id="additionalExpensesTotal">0</dd>
+            <div class="summary-component-block is-hidden" id="additionalExpensesDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="additionalExpensesDetailToggle" data-panel="additionalExpensesDetailPanel" aria-expanded="false">
+                        <span>פירוט חיוב למרכז</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="additionalExpensesDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="additionalExpensesDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
+            <dt>המרכז חייב למטפלת (במלוא הסכום)</dt>
+            <dd id="centerOwesTherapistTotal">0</dd>
+            <div class="summary-component-block is-hidden" id="centerOwesTherapistDetailBlock">
+                <div class="summary-extra-toggle-row">
+                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="centerOwesTherapistDetailToggle" data-panel="centerOwesTherapistDetailPanel" aria-expanded="false">
+                        <span>פירוט חוב מהמרכז</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                </div>
+                <div id="centerOwesTherapistDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <ul id="centerOwesTherapistDetail" class="summary-item-list"></ul>
+                </div>
+            </div>
+            <dt>הוצאות קורסים (75% מהסכום)</dt>
+            <dd id="courseExpensesTotal">0</dd>
+        </dl>
+        <div class="summary-extra-toggle-row">
+            <button type="button" class="summary-extra-toggle" id="extraCalcsToggle" aria-expanded="true">
+                <span>חישובים נוספים</span>
+                <span class="summary-extra-chevron">▾</span>
+            </button>
+        </div>
+        <div id="extraCalcsPanel" class="summary-extra-panel">
+            <div class="summary-settlement-block">
+                <dt>סה״כ הכנסה פרטנית (מחיר פרטני × מפגשים)</dt>
+                <dd id="grossIndividualTotal">0</dd>
+                <dt>חלק המרכז (לאחר התאמות)</dt>
+                <dd id="centerTotal">0</dd>
+                <div class="summary-pay-zone summary-pay-zone-center">
+                    <dt>למרכז (לפי סימון יעד)</dt>
+                    <dd id="paidToCenterTotal">0</dd>
+                    <dt>מפגשי טיפול לתשלום למרכז</dt>
+                    <dd id="paidToCenterTreatmentCount">0</dd>
+                    <dt>יתרה למרכז (כמה אני חייבת למרכז)</dt>
+                    <dd id="remainingToCenter">0</dd>
+                </div>
+                <div class="summary-pay-zone summary-pay-zone-therapist">
+                    <dt>למטפלת (לפי סימון יעד)</dt>
+                    <dd id="paidToTherapistTotal">0</dd>
+                    <dt>מפגשי טיפול לתשלום למטפלת</dt>
+                    <dd id="paidToTherapistTreatmentCount">0</dd>
+                    <dt>יתרה למטפלת (כמה המרכז חייב לי)</dt>
+                    <dd id="remainingToTherapist">0</dd>
+                </div>
+            </div>
+            <div class="grand extra-grand">
+                נטו אחרי קיזוז: <span id="netSettlementText">אין יתרה</span>
+            </div>
+        </div>
+        <div class="grand">סה״כ למטפלת (כולל קבוצה): <span id="grandTotal">0</span> ₪</div>
     </div>
 
     <div class="card no-print">
