@@ -429,6 +429,9 @@
             gap: 0.9rem;
             margin-top: 0.75rem;
         }
+        .extras-grid .extra-box:has(.mini-entry-list) {
+            grid-column: 1 / -1;
+        }
         .extra-box {
             border: 1px solid var(--border);
             border-radius: 10px;
@@ -447,6 +450,73 @@
             border-collapse: collapse;
             font-size: 0.77rem;
             table-layout: fixed;
+        }
+        .mini-entry-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        .mini-entry-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.6rem;
+            background: #fff;
+        }
+        .mini-entry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+            gap: 0.5rem 0.75rem;
+        }
+        .mini-entry-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            min-width: 0;
+        }
+        .mini-entry-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .mini-entry-field input,
+        .mini-entry-field select {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.78rem;
+            padding: 0.35rem 0.45rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .mini-entry-pay-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem 1rem;
+            margin-top: 0.55rem;
+            padding-top: 0.55rem;
+            border-top: 1px dashed var(--border);
+        }
+        .mini-entry-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.76rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .mini-entry-check input {
+            width: 1rem;
+            height: 1rem;
+            margin: 0;
+            cursor: pointer;
+        }
+        .mini-entry-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.45rem;
+        }
+        .mini-entry-actions .mini-del {
+            font-size: 0.72rem;
+            padding: 0.22rem 0.55rem;
         }
         .mini-table th, .mini-table td {
             border: 1px solid var(--border);

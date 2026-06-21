@@ -641,6 +641,7 @@
 
     function wireMiniRowInputs(tr) {
         tr.querySelectorAll('input, select').forEach((inp) => {
+            if (inp.classList.contains('mini-paid-center') || inp.classList.contains('mini-paid-therapist')) return;
             inp.addEventListener('input', schedulePersist);
             inp.addEventListener('change', schedulePersist);
         });
@@ -651,6 +652,62 @@
                 schedulePersist();
             });
         }
+    }
+
+    function miniPayTargetFieldsHtml(d) {
+        const data = d && typeof d === 'object' ? d : {};
+        let toC = !!data.paidToCenter;
+        let toT = !!data.paidToTherapist;
+        if (toC && toT) toT = false;
+        return `<div class="mini-entry-pay-row">
+            <label class="mini-entry-check"><input type="checkbox" class="mini-paid-center" title="שולם למרכז" ${toC ? 'checked' : ''} /> שולם למרכז</label>
+            <label class="mini-entry-check"><input type="checkbox" class="mini-paid-therapist" title="שולם למטפלת" ${toT ? 'checked' : ''} /> שולם למטפלת</label>
+        </div>`;
+    }
+
+    function miniEntryFieldHtml(label, inputHtml) {
+        return `<label class="mini-entry-field"><span class="mini-entry-label">${label}</span>${inputHtml}</label>`;
+    }
+
+    function readMiniPayTarget(tr) {
+        return {
+            paidToCenter: !!tr.querySelector('.mini-paid-center')?.checked,
+            paidToTherapist: !!tr.querySelector('.mini-paid-therapist')?.checked
+        };
+    }
+
+    function wireMiniPayTarget(tr) {
+        const center = tr.querySelector('.mini-paid-center');
+        const therapist = tr.querySelector('.mini-paid-therapist');
+        center?.addEventListener('change', () => {
+            if (center.checked && therapist) therapist.checked = false;
+            schedulePersist();
+        });
+        therapist?.addEventListener('change', () => {
+            if (therapist.checked && center) center.checked = false;
+            schedulePersist();
+        });
+    }
+
+    function wireMiniRow(tr) {
+        wireMiniRowInputs(tr);
+        wireMiniPayTarget(tr);
+    }
+
+    function accumulateExtraPayRouting(paidToCenter, paidToTherapist, gross, therapistShare, counters) {
+        const centerShare = Math.max(0, gross - therapistShare);
+        if (paidToCenter) {
+            counters.paidToCenterTotal += gross;
+            counters.paidToCenterApplied += centerShare;
+        }
+        if (paidToTherapist) {
+            counters.paidToTherapistTotal += gross;
+            counters.paidToTherapistApplied += therapistShare;
+        }
+    }
+
+    function extraPayMarkYes(value) {
+        return value ? 'כן' : '';
     }
 
     function addParentMeetingRow(data) {
@@ -672,25 +729,33 @@
 
     function addLanguageEvalRow(data) {
         const d = data || {};
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td><input type="text" class="le-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
-            <td><input type="date" class="le-date" value="${escapeAttr(d.date)}" /></td>
-            <td><input type="number" min="0" step="1" class="le-total" value="${toAmount(d.total, 500)}" /></td>
-            <td><input type="number" min="0" step="1" class="le-therapist" value="${toAmount(d.therapist, 305)}" /></td>
-            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
-        languageEvalBody.appendChild(tr);
-        wireMiniRowInputs(tr);
+        const card = document.createElement('div');
+        card.className = 'mini-entry-card';
+        card.innerHTML = `<div class="mini-entry-grid">
+            ${miniEntryFieldHtml('שם ילד', `<input type="text" class="le-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" />`)}
+            ${miniEntryFieldHtml('תאריך', `<input type="date" class="le-date" value="${escapeAttr(d.date)}" />`)}
+            ${miniEntryFieldHtml('מחיר מלא', `<input type="number" min="0" step="1" class="le-total" value="${toAmount(d.total, 500)}" />`)}
+            ${miniEntryFieldHtml('שכר למטפלת', `<input type="number" min="0" step="1" class="le-therapist" value="${toAmount(d.therapist, 305)}" />`)}
+        </div>
+        ${miniPayTargetFieldsHtml(d)}
+        <div class="mini-entry-actions"><button type="button" class="btn btn-danger mini-del">מחק</button></div>`;
+        languageEvalBody.appendChild(card);
+        wireMiniRow(card);
     }
 
     function addDiagnosticRow(data) {
         const d = data || {};
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td><input type="text" class="dg-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" /></td>
-            <td><input type="date" class="dg-date" value="${escapeAttr(d.date)}" /></td>
-            <td><input type="number" min="0" step="1" class="dg-pay" value="${toAmount(d.therapist, 900)}" /></td>
-            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
-        diagnosticsBody.appendChild(tr);
-        wireMiniRowInputs(tr);
+        const card = document.createElement('div');
+        card.className = 'mini-entry-card';
+        card.innerHTML = `<div class="mini-entry-grid">
+            ${miniEntryFieldHtml('שם ילד', `<input type="text" class="dg-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" />`)}
+            ${miniEntryFieldHtml('תאריך', `<input type="date" class="dg-date" value="${escapeAttr(d.date)}" />`)}
+            ${miniEntryFieldHtml('שכר למטפלת', `<input type="number" min="0" step="1" class="dg-pay" value="${toAmount(d.therapist, 900)}" />`)}
+        </div>
+        ${miniPayTargetFieldsHtml(d)}
+        <div class="mini-entry-actions"><button type="button" class="btn btn-danger mini-del">מחק</button></div>`;
+        diagnosticsBody.appendChild(card);
+        wireMiniRow(card);
     }
 
     function addGroupAssessmentRow(data) {
@@ -750,16 +815,18 @@
             date: tr.querySelector('.pm-date')?.value || '',
             duration: normalizeParentMeetingDuration(tr.querySelector('.pm-duration')?.value)
         }));
-        const languageEvaluations = Array.from(languageEvalBody.querySelectorAll('tr')).map((tr) => ({
-            child: tr.querySelector('.le-child')?.value.trim() || '',
-            date: tr.querySelector('.le-date')?.value || '',
-            total: toAmount(tr.querySelector('.le-total')?.value, 500),
-            therapist: toAmount(tr.querySelector('.le-therapist')?.value, 305)
+        const languageEvaluations = Array.from(languageEvalBody.querySelectorAll('.mini-entry-card')).map((card) => ({
+            child: card.querySelector('.le-child')?.value.trim() || '',
+            date: card.querySelector('.le-date')?.value || '',
+            total: toAmount(card.querySelector('.le-total')?.value, 500),
+            therapist: toAmount(card.querySelector('.le-therapist')?.value, 305),
+            ...readMiniPayTarget(card)
         }));
-        const diagnostics = Array.from(diagnosticsBody.querySelectorAll('tr')).map((tr) => ({
-            child: tr.querySelector('.dg-child')?.value.trim() || '',
-            date: tr.querySelector('.dg-date')?.value || '',
-            therapist: toAmount(tr.querySelector('.dg-pay')?.value, 900)
+        const diagnostics = Array.from(diagnosticsBody.querySelectorAll('.mini-entry-card')).map((card) => ({
+            child: card.querySelector('.dg-child')?.value.trim() || '',
+            date: card.querySelector('.dg-date')?.value || '',
+            therapist: toAmount(card.querySelector('.dg-pay')?.value, 900),
+            ...readMiniPayTarget(card)
         }));
         const groupAssessments = Array.from(groupAssessmentsBody.querySelectorAll('tr')).map((tr) => ({
             child: tr.querySelector('.ga-child')?.value.trim() || '',
@@ -1518,6 +1585,31 @@ ${d.fullName || '—'}
         });
         const g = collectGroupState();
         const extras = collectExtrasState();
+        const payCounters = {
+            paidToCenterTotal,
+            paidToTherapistTotal,
+            paidToCenterApplied,
+            paidToTherapistApplied
+        };
+        if (extras.languageEvaluationsEnabled) {
+            extras.languageEvaluations.forEach((x) => {
+                if (!x.child && !x.date) return;
+                const gross = toAmount(x.total, 500);
+                const therapistShare = toAmount(x.therapist, 305);
+                accumulateExtraPayRouting(x.paidToCenter, x.paidToTherapist, gross, therapistShare, payCounters);
+            });
+        }
+        if (extras.diagnosticsEnabled) {
+            extras.diagnostics.forEach((x) => {
+                if (!x.child && !x.date) return;
+                const therapistShare = toAmount(x.therapist, 900);
+                accumulateExtraPayRouting(x.paidToCenter, x.paidToTherapist, therapistShare, therapistShare, payCounters);
+            });
+        }
+        paidToCenterTotal = payCounters.paidToCenterTotal;
+        paidToTherapistTotal = payCounters.paidToTherapistTotal;
+        paidToCenterApplied = payCounters.paidToCenterApplied;
+        paidToTherapistApplied = payCounters.paidToTherapistApplied;
         const groupTotal = g.enabled
             ? g.groups.reduce((sum, gr) => sum + gr.rate * gr.sessions, 0)
             : 0;
@@ -1826,17 +1918,31 @@ ${d.fullName || '—'}
         if (sum.extras.languageEvaluationsEnabled && sum.extras.languageEvaluations.length) {
             aoa.push([]);
             aoa.push(['הערכות שפה']);
-            aoa.push(['שם ילד', 'תאריך', 'מחיר הערכה', 'למטפלת', 'למרכז']);
+            aoa.push(['שם ילד', 'תאריך', 'מחיר הערכה', 'שכר למטפלת', 'למרכז (סכום)', 'למרכז', 'למטפלת']);
             sum.extras.languageEvaluations.forEach((x) => {
-                aoa.push([x.child, x.date, x.total, x.therapist, Math.max(0, x.total - x.therapist)]);
+                aoa.push([
+                    x.child,
+                    x.date,
+                    x.total,
+                    x.therapist,
+                    Math.max(0, x.total - x.therapist),
+                    extraPayMarkYes(x.paidToCenter),
+                    extraPayMarkYes(x.paidToTherapist)
+                ]);
             });
         }
         if (sum.extras.diagnosticsEnabled && sum.extras.diagnostics.length) {
             aoa.push([]);
             aoa.push(['אבחונים']);
-            aoa.push(['שם ילד', 'תאריך', 'למטפלת']);
+            aoa.push(['שם ילד', 'תאריך', 'שכר למטפלת', 'למרכז', 'למטפלת']);
             sum.extras.diagnostics.forEach((x) => {
-                aoa.push([x.child, x.date, x.therapist]);
+                aoa.push([
+                    x.child,
+                    x.date,
+                    x.therapist,
+                    extraPayMarkYes(x.paidToCenter),
+                    extraPayMarkYes(x.paidToTherapist)
+                ]);
             });
         }
         if (sum.extras.groupAssessmentsEnabled && sum.extras.groupAssessments.length) {

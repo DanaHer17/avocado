@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260520">
+    <link rel="stylesheet" href="styles.css?v=20260613">
 </head>
 <body>
 <div class="wrap">
@@ -129,31 +129,11 @@
         <div class="extras-grid">
             <div class="extra-box">
                 <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
-                    <input type="checkbox" id="parentMeetingsEnabled" />
-                    <label for="parentMeetingsEnabled">פגישות הורים (ילדי קבוצה)</label>
-                </div>
-                <div id="parentMeetingsFields" class="is-hidden">
-                    <table class="mini-table">
-                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>משך</th><th></th></tr></thead>
-                        <tbody id="parentMeetingsBody"></tbody>
-                    </table>
-                    <div class="mini-toolbar">
-                        <button type="button" class="btn-mini" id="addParentMeeting">+ פגישת הורים</button>
-                        <span class="mini-note">45 דקות = שכר בסיס למטפלת (כולל בונוס ישיבה אם קיים). 30 דקות = 150 ₪ קבוע.</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="extra-box">
-                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
                     <input type="checkbox" id="languageEvaluationsEnabled" />
                     <label for="languageEvaluationsEnabled">הערכות שפה</label>
                 </div>
                 <div id="languageEvaluationsFields" class="is-hidden">
-                    <table class="mini-table">
-                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>מחיר הערכה</th><th>למטפלת</th><th></th></tr></thead>
-                        <tbody id="languageEvalBody"></tbody>
-                    </table>
+                    <div class="mini-entry-list" id="languageEvalBody"></div>
                     <div class="mini-toolbar">
                         <button type="button" class="btn-mini" id="addLanguageEval">+ הערכת שפה</button>
                         <span class="mini-note">ברירת מחדל: 500 סה״כ, 305 למטפלת.</span>
@@ -167,13 +147,27 @@
                     <label for="diagnosticsEnabled">אבחונים</label>
                 </div>
                 <div id="diagnosticsFields" class="is-hidden">
-                    <table class="mini-table">
-                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>למטפלת</th><th></th></tr></thead>
-                        <tbody id="diagnosticsBody"></tbody>
-                    </table>
+                    <div class="mini-entry-list" id="diagnosticsBody"></div>
                     <div class="mini-toolbar">
                         <button type="button" class="btn-mini" id="addDiagnostic">+ אבחון</button>
                         <span class="mini-note">ברירת מחדל: 900 למטפלת לכל אבחון.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="extra-box">
+                <div class="check-row" style="padding-top:0; margin-bottom:0.35rem;">
+                    <input type="checkbox" id="parentMeetingsEnabled" />
+                    <label for="parentMeetingsEnabled">פגישות הורים (ילדי קבוצה)</label>
+                </div>
+                <div id="parentMeetingsFields" class="is-hidden">
+                    <table class="mini-table">
+                        <thead><tr><th>שם ילד</th><th>תאריך</th><th>משך</th><th></th></tr></thead>
+                        <tbody id="parentMeetingsBody"></tbody>
+                    </table>
+                    <div class="mini-toolbar">
+                        <button type="button" class="btn-mini" id="addParentMeeting">+ פגישת הורים</button>
+                        <span class="mini-note">45 דקות = שכר בסיס למטפלת (כולל בונוס ישיבה אם קיים). 30 דקות = 150 ₪ קבוע.</span>
                     </div>
                 </div>
             </div>
@@ -425,7 +419,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260611h"></script>
+<script src="app.js?v=20260613"></script>
 
 </body>
 </html>
