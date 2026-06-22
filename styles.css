@@ -555,6 +555,74 @@
             border: none;
         }
         .summary h2 { font-size: 1rem; margin: 0 0 0.75rem; font-weight: 600; }
+        .summary-entitlement-toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.75rem;
+            margin-bottom: 0.65rem;
+        }
+        .summary-entitlement-toggles .summary-component-block {
+            margin: 0;
+        }
+        .summary-entitlement-toggles .summary-extra-toggle-row {
+            margin-top: 0;
+        }
+        .summary-settlement-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        .summary-pay-zone-title {
+            margin: 0 0 0.45rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+        .summary-pay-zone-dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.3rem 0.75rem;
+            margin: 0;
+            font-size: 0.86rem;
+        }
+        .summary-pay-zone-dl dt {
+            color: rgba(236, 253, 245, 0.78);
+        }
+        .summary-pay-zone-dl .summary-deduct-label,
+        .summary-pay-zone-dl .summary-deduct-value {
+            color: #fde68a;
+        }
+        .summary-pay-zone-dl .summary-final-label,
+        .summary-pay-zone-dl .summary-final-value {
+            margin-top: 0.25rem;
+            padding-top: 0.35rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+        .summary-pay-zone .summary-component-block {
+            margin-top: 0.35rem;
+        }
+        .summary-pay-zone .summary-extra-toggle-row {
+            margin-top: 0;
+        }
+        .summary-accounting-dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.35rem 1rem;
+            margin: 0;
+            font-size: 0.86rem;
+        }
+        .summary-accounting-dl > .summary-component-block {
+            grid-column: 1 / -1;
+        }
+        .net-settlement-grand {
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,.25);
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
         .summary dl {
             display: grid;
             grid-template-columns: auto 1fr;
@@ -619,12 +687,10 @@
         }
         .summary-settlement-block .summary-pay-zone {
             grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0.35rem 1rem;
+            display: block;
             padding: 0.55rem 0.65rem;
             border-radius: 10px;
-            margin-top: 0.4rem;
+            margin-top: 0;
         }
         .summary-pay-zone-center {
             background: rgba(59, 130, 246, 0.16);
@@ -775,6 +841,11 @@
             font-size: 1.15rem;
         }
         .grand span { color: #fde047; }
+        @media (max-width: 760px) {
+            .summary-settlement-columns {
+                grid-template-columns: 1fr;
+            }
+        }
         @media (max-width: 1100px) {
             #patientTable {
                 min-width: 760px;

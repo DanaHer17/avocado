@@ -117,15 +117,18 @@
         centerTotal: document.getElementById('centerTotal'),
         grandTotal: document.getElementById('grandTotal'),
         paidToCenterTotal: document.getElementById('paidToCenterTotal'),
+        paidToCenterApplied: document.getElementById('paidToCenterApplied'),
         paidToCenterTreatmentCount: document.getElementById('paidToCenterTreatmentCount'),
         paidToTherapistTotal: document.getElementById('paidToTherapistTotal'),
+        paidToTherapistApplied: document.getElementById('paidToTherapistApplied'),
         paidToTherapistTreatmentCount: document.getElementById('paidToTherapistTreatmentCount'),
         remainingToCenter: document.getElementById('remainingToCenter'),
         remainingToTherapist: document.getElementById('remainingToTherapist'),
         netSettlementText: document.getElementById('netSettlementText'),
-        extraRolesDetail: document.getElementById('extraRolesDetail'),
-        additionalExpensesDetail: document.getElementById('additionalExpensesDetail'),
-        centerOwesTherapistDetail: document.getElementById('centerOwesTherapistDetail')
+        therapistEntitlementDetail: document.getElementById('therapistEntitlementDetail'),
+        centerEntitlementDetail: document.getElementById('centerEntitlementDetail'),
+        paidToTherapistDetail: document.getElementById('paidToTherapistDetail'),
+        paidToCenterDetail: document.getElementById('paidToCenterDetail')
     };
 
     function meetingBonusAmount() {
@@ -694,15 +697,17 @@
         wireMiniPayTarget(tr);
     }
 
-    function accumulateExtraPayRouting(paidToCenter, paidToTherapist, gross, therapistShare, counters) {
+    function accumulateExtraPayRouting(paidToCenter, paidToTherapist, gross, therapistShare, counters, breakdown, label) {
         const centerShare = Math.max(0, gross - therapistShare);
         if (paidToCenter) {
             counters.paidToCenterTotal += gross;
             counters.paidToCenterApplied += centerShare;
+            if (breakdown && label) breakdown.center.push({ label, amount: centerShare });
         }
         if (paidToTherapist) {
             counters.paidToTherapistTotal += gross;
             counters.paidToTherapistApplied += therapistShare;
+            if (breakdown && label) breakdown.therapist.push({ label, amount: therapistShare });
         }
     }
 
@@ -1416,7 +1421,7 @@ ${d.fullName || '—'}
 
     function defaultUiState() {
         return {
-            extraCalcsCollapsed: false,
+            extraCalcsCollapsed: true,
             componentPanels: {}
         };
     }
@@ -1535,8 +1540,10 @@ ${d.fullName || '—'}
         let paidToTherapistApplied = 0;
         let paidToCenterTreatmentCount = 0;
         let paidToTherapistTreatmentCount = 0;
+        const paidDirectBreakdown = { center: [], therapist: [] };
         getAllPatientTableRows().forEach(tr => {
             const rd = rowDataFromTr(tr);
+            const patientLabel = rd.name || 'מטופל/ת';
             const sessionsPart = sessionBreakdownFromRow(rd, {
                 role,
                 clientRate,
@@ -1576,11 +1583,13 @@ ${d.fullName || '—'}
                 paidToCenterTotal += grossRow;
                 paidToCenterApplied += centerShare;
                 paidToCenterTreatmentCount += billable;
+                paidDirectBreakdown.center.push({ label: patientLabel, amount: centerShare });
             }
             if (paidToTherapist) {
                 paidToTherapistTotal += grossRow;
                 paidToTherapistApplied += therapistShare;
                 paidToTherapistTreatmentCount += billable;
+                paidDirectBreakdown.therapist.push({ label: patientLabel, amount: therapistShare });
             }
         });
         const g = collectGroupState();
@@ -1596,14 +1605,32 @@ ${d.fullName || '—'}
                 if (!x.child && !x.date) return;
                 const gross = toAmount(x.total, 500);
                 const therapistShare = toAmount(x.therapist, 305);
-                accumulateExtraPayRouting(x.paidToCenter, x.paidToTherapist, gross, therapistShare, payCounters);
+                const childLabel = x.child || 'הערכת שפה';
+                accumulateExtraPayRouting(
+                    x.paidToCenter,
+                    x.paidToTherapist,
+                    gross,
+                    therapistShare,
+                    payCounters,
+                    paidDirectBreakdown,
+                    `הערכת שפה — ${childLabel}`
+                );
             });
         }
         if (extras.diagnosticsEnabled) {
             extras.diagnostics.forEach((x) => {
                 if (!x.child && !x.date) return;
                 const therapistShare = toAmount(x.therapist, 900);
-                accumulateExtraPayRouting(x.paidToCenter, x.paidToTherapist, therapistShare, therapistShare, payCounters);
+                const childLabel = x.child || 'אבחון';
+                accumulateExtraPayRouting(
+                    x.paidToCenter,
+                    x.paidToTherapist,
+                    therapistShare,
+                    therapistShare,
+                    payCounters,
+                    paidDirectBreakdown,
+                    `אבחון — ${childLabel}`
+                );
             });
         }
         paidToCenterTotal = payCounters.paidToCenterTotal;
@@ -1660,6 +1687,36 @@ ${d.fullName || '—'}
         const remainingToCenter = Math.max(0, centerTotal - paidToCenterApplied);
         const remainingToTherapist = Math.max(0, grandTotal - paidToTherapistApplied);
         const netSettlement = remainingToTherapist - remainingToCenter;
+        const individualCenterShare = Math.max(0, grossIndividualTotal - individualTotal);
+        const therapistEntitlement = [];
+        if (individualTotal > 0) therapistEntitlement.push({ label: 'מפגשים פרטניים', amount: individualTotal });
+        if (groupTotal > 0) therapistEntitlement.push({ label: 'קבוצה', amount: groupTotal });
+        if (parentMeetingsTotal > 0) therapistEntitlement.push({ label: 'פגישות הורים', amount: parentMeetingsTotal });
+        if (languageEvalTherapistTotal > 0) therapistEntitlement.push({ label: 'הערכות שפה', amount: languageEvalTherapistTotal });
+        if (diagnosticsTotal > 0) therapistEntitlement.push({ label: 'אבחונים', amount: diagnosticsTotal });
+        if (groupAssessmentsTotal > 0) therapistEntitlement.push({ label: 'מפגשי הערכה לקבוצה', amount: groupAssessmentsTotal });
+        if (extras.extraRoleEnabled) {
+            extras.extraRoles.forEach((x) => {
+                const amount = toAmount(x.amount, 0);
+                if (amount > 0) therapistEntitlement.push({ label: x.role || 'תפקיד נוסף', amount });
+            });
+        }
+        if (extras.centerOwesTherapistEnabled) {
+            extras.centerOwesTherapist.forEach((x) => {
+                const amount = toAmount(x.amount, 0);
+                if (amount > 0) therapistEntitlement.push({ label: x.name || 'חוב מהמרכז', amount });
+            });
+        }
+        const centerEntitlement = [];
+        if (individualCenterShare > 0) centerEntitlement.push({ label: 'חלק מרכז מטיפולים פרטניים', amount: individualCenterShare });
+        if (languageEvalCenterTotal > 0) centerEntitlement.push({ label: 'הערכות שפה', amount: languageEvalCenterTotal });
+        if (courseExpensesTotal > 0) centerEntitlement.push({ label: 'הוצאות קורסים (75%)', amount: courseExpensesTotal });
+        if (extras.additionalExpensesEnabled) {
+            extras.additionalExpenses.forEach((x) => {
+                const amount = toAmount(x.amount, 0);
+                if (amount > 0) centerEntitlement.push({ label: x.name || 'חיוב למרכז', amount });
+            });
+        }
         return {
             rate,
             effectiveTherapistRates: buildEffectiveTherapistRates(),
@@ -1690,6 +1747,9 @@ ${d.fullName || '—'}
             remainingToCenter,
             remainingToTherapist,
             netSettlement,
+            therapistEntitlement,
+            centerEntitlement,
+            paidDirectBreakdown,
             group: g,
             extras
         };
@@ -1759,6 +1819,32 @@ ${d.fullName || '—'}
                 )
                 .join('');
         }
+    }
+
+    function renderSummaryAmountList(container, rows, ui) {
+        if (!container) return;
+        const block = ui && ui.block;
+        const panel = ui && ui.panel;
+        const toggle = ui && ui.toggle;
+        const list = (Array.isArray(rows) ? rows : []).filter((row) => row && row.amount > 0);
+        if (!list.length) {
+            container.innerHTML = '';
+            if (block) block.classList.add('is-hidden');
+            if (panel) panel.classList.add('is-collapsed');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+                const chev = toggle.querySelector('.summary-extra-chevron');
+                if (chev) chev.textContent = '▸';
+            }
+            return;
+        }
+        if (block) block.classList.remove('is-hidden');
+        container.innerHTML = list
+            .map((row) =>
+                `<li><span class="summary-item-name">${escapeHtml(row.label)}</span>` +
+                `<span class="summary-item-amount">${row.amount.toLocaleString('he-IL')} ₪</span></li>`
+            )
+            .join('');
     }
 
     function renderSummaryItemList(container, items, labelFn, amountFn, ui) {
@@ -1867,16 +1953,19 @@ ${d.fullName || '—'}
         aoa.push([]);
         aoa.push(['סה״כ מפגשים לחישוב', sum.totalBillable]);
         aoa.push(['סה״כ ביטולים ללא תשלום', sum.totalUnpaid]);
-        aoa.push(['סה״כ פרטני (₪)', sum.individualTotal]);
+        aoa.push(['שכר מטפלת מטיפולים פרטניים (₪)', sum.individualTotal]);
         aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
-        aoa.push(['חלק המרכז (₪)', sum.centerTotal]);
-        aoa.push(['למרכז (₪)', sum.paidToCenterTotal, 'לפי סימון יעד (₪)', sum.paidToCenterApplied]);
-        aoa.push(['מפגשי טיפול לתשלום למרכז (סימון יעד)', sum.paidToCenterTreatmentCount]);
-        aoa.push(['למטפלת (₪)', sum.paidToTherapistTotal, 'לפי סימון יעד (₪)', sum.paidToTherapistApplied]);
-        aoa.push(['מפגשי טיפול לתשלום למטפלת (סימון יעד)', sum.paidToTherapistTreatmentCount]);
-        aoa.push(['יתרה למרכז (כמה אני חייבת למרכז) (₪)', sum.remainingToCenter]);
-        aoa.push(['יתרה למטפלת (כמה המרכז חייב לי) (₪)', sum.remainingToTherapist]);
-        aoa.push(['נטו אחרי קיזוז', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה')]);
+        aoa.push(['סה״כ זכאות המרכז (₪)', sum.centerTotal]);
+        aoa.push(['סה״כ זכאות המטפלת (₪)', sum.grandTotal]);
+        aoa.push(['שולם ישירות למרכז (₪)', sum.paidToCenterApplied]);
+        aoa.push(['שולם ישירות למטפלת (₪)', sum.paidToTherapistApplied]);
+        aoa.push(['עדיין להעביר למרכז (₪)', sum.remainingToCenter]);
+        aoa.push(['עדיין לקבל מהמרכז (₪)', sum.remainingToTherapist]);
+        aoa.push(['נטו החודש', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')]);
+        aoa.push(['סכום גולמי ששולם ישירות למרכז (₪)', sum.paidToCenterTotal]);
+        aoa.push(['מפגשי טיפול ששולמו ישירות למרכז', sum.paidToCenterTreatmentCount]);
+        aoa.push(['סכום גולמי ששולם ישירות למטפלת (₪)', sum.paidToTherapistTotal]);
+        aoa.push(['מפגשי טיפול ששולמו ישירות למטפלת', sum.paidToTherapistTreatmentCount]);
         aoa.push(['פגישות הורים למטפלת (₪)', sum.parentMeetingsTotal]);
         aoa.push(['הערכות שפה למטפלת (₪)', sum.languageEvalTherapistTotal]);
         aoa.push(['הערכות שפה למרכז (₪)', sum.languageEvalCenterTotal]);
@@ -1899,7 +1988,6 @@ ${d.fullName || '—'}
             });
         }
         aoa.push(['סה״כ כל הקבוצות (₪)', sum.groupTotal]);
-        aoa.push(['סה״כ למטפלת (₪)', sum.grandTotal]);
 
         if (sum.extras.parentMeetingsEnabled && sum.extras.parentMeetings.length) {
             aoa.push([]);
@@ -2036,11 +2124,11 @@ ${d.fullName || '—'}
             `<strong>סה״כ ביטולים ללא תשלום:</strong> ${sum.totalUnpaid}<br>` +
             `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
             `<strong>סה״כ הכנסה פרטנית:</strong> ${sum.grossIndividualTotal} ₪<br>` +
-            `<strong>חלק המרכז (פרטני):</strong> ${sum.centerTotal} ₪<br>` +
-            `<strong>למרכז:</strong> ${sum.paidToCenterTotal} ₪ (לפי סימון יעד: ${sum.paidToCenterApplied} ₪) &nbsp;|&nbsp; <strong>מפגשי טיפול לתשלום למרכז:</strong> ${sum.paidToCenterTreatmentCount}<br>` +
-            `<strong>למטפלת:</strong> ${sum.paidToTherapistTotal} ₪ (לפי סימון יעד: ${sum.paidToTherapistApplied} ₪) &nbsp;|&nbsp; <strong>מפגשי טיפול לתשלום למטפלת:</strong> ${sum.paidToTherapistTreatmentCount}<br>` +
-            `<strong>יתרה למרכז (כמה אני חייבת למרכז):</strong> ${sum.remainingToCenter} ₪ &nbsp;|&nbsp; <strong>יתרה למטפלת (כמה המרכז חייב לי):</strong> ${sum.remainingToTherapist} ₪<br>` +
-            `<strong>נטו אחרי קיזוז:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה')}<br>` +
+            `<strong>סה״כ זכאות המטפלת:</strong> ${sum.grandTotal} ₪<br>` +
+            `<strong>סה״כ זכאות המרכז:</strong> ${sum.centerTotal} ₪<br>` +
+            `<strong>שולם ישירות למרכז:</strong> ${sum.paidToCenterApplied} ₪ &nbsp;|&nbsp; <strong>שולם ישירות למטפלת:</strong> ${sum.paidToTherapistApplied} ₪<br>` +
+            `<strong>עדיין להעביר למרכז:</strong> ${sum.remainingToCenter} ₪ &nbsp;|&nbsp; <strong>עדיין לקבל מהמרכז:</strong> ${sum.remainingToTherapist} ₪<br>` +
+            `<strong>נטו החודש:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')}<br>` +
             `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
             `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
@@ -2057,8 +2145,7 @@ ${d.fullName || '—'}
                 ).join('') +
                 `<strong>סה״כ כל הקבוצות:</strong> ${sum.groupTotal} ₪<br>`
                 : ''}` +
-            `<strong>סה״כ למטפלת:</strong> ${sum.grandTotal} ₪</p>` +
-            '</body></html>';
+            '</p></body></html>';
         const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
         downloadBlob(`treatment-report-${stampFilename()}.doc`, blob);
     }
@@ -2590,7 +2677,6 @@ ${d.fullName || '—'}
         updateAllRowPaidStyles();
         updatePatientTableLayoutMode();
         const clientRate = parseFloat(clientRateInput?.value) || 0;
-        renderEffectiveRatesSummary();
 
         getAllPatientTableRows().forEach(tr => {
             syncSessionsFromDates(tr);
@@ -2617,6 +2703,37 @@ ${d.fullName || '—'}
 
         const sum = getSummary();
         const els = summaryEls;
+        renderEffectiveRatesSummary(sum.effectiveTherapistRates);
+        renderSummaryAmountList(els.therapistEntitlementDetail, sum.therapistEntitlement, {
+            block: document.getElementById('therapistEntitlementDetailBlock'),
+            panel: document.getElementById('therapistEntitlementDetailPanel'),
+            toggle: document.getElementById('therapistEntitlementDetailToggle')
+        });
+        renderSummaryAmountList(els.centerEntitlementDetail, sum.centerEntitlement, {
+            block: document.getElementById('centerEntitlementDetailBlock'),
+            panel: document.getElementById('centerEntitlementDetailPanel'),
+            toggle: document.getElementById('centerEntitlementDetailToggle')
+        });
+        renderSummaryAmountList(els.paidToTherapistDetail, sum.paidDirectBreakdown.therapist, {
+            block: document.getElementById('paidToTherapistDetailBlock'),
+            panel: document.getElementById('paidToTherapistDetailPanel'),
+            toggle: document.getElementById('paidToTherapistDetailToggle')
+        });
+        renderSummaryAmountList(els.paidToCenterDetail, sum.paidDirectBreakdown.center, {
+            block: document.getElementById('paidToCenterDetailBlock'),
+            panel: document.getElementById('paidToCenterDetailPanel'),
+            toggle: document.getElementById('paidToCenterDetailToggle')
+        });
+        els.grandTotal.textContent = sum.grandTotal.toLocaleString('he-IL');
+        els.centerTotal.textContent = sum.centerTotal.toLocaleString('he-IL');
+        if (els.paidToTherapistApplied) {
+            els.paidToTherapistApplied.textContent = sum.paidToTherapistApplied.toLocaleString('he-IL');
+        }
+        if (els.paidToCenterApplied) {
+            els.paidToCenterApplied.textContent = sum.paidToCenterApplied.toLocaleString('he-IL');
+        }
+        els.remainingToTherapist.textContent = sum.remainingToTherapist.toLocaleString('he-IL');
+        els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
         els.totalBillable.textContent = sum.totalBillable.toLocaleString('he-IL');
         els.totalUnpaidCancels.textContent = sum.totalUnpaid.toLocaleString('he-IL');
         els.individualTotal.textContent = sum.individualTotal.toLocaleString('he-IL');
@@ -2627,51 +2744,18 @@ ${d.fullName || '—'}
         els.diagnosticsTotal.textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
         els.groupAssessmentsTotal.textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
         els.extraRolesTotal.textContent = sum.extraRolesTotal.toLocaleString('he-IL');
-        renderSummaryItemList(
-            els.extraRolesDetail,
-            sum.extras.extraRoleEnabled ? sum.extras.extraRoles : [],
-            (x) => x.role,
-            (x) => x.amount,
-            {
-                block: document.getElementById('extraRolesDetailBlock'),
-                panel: document.getElementById('extraRolesDetailPanel'),
-                toggle: document.getElementById('extraRolesDetailToggle')
-            }
-        );
         els.additionalExpensesTotal.textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
-        renderSummaryItemList(
-            els.additionalExpensesDetail,
-            sum.extras.additionalExpensesEnabled ? sum.extras.additionalExpenses : [],
-            (x) => x.name,
-            (x) => x.amount,
-            {
-                block: document.getElementById('additionalExpensesDetailBlock'),
-                panel: document.getElementById('additionalExpensesDetailPanel'),
-                toggle: document.getElementById('additionalExpensesDetailToggle')
-            }
-        );
         els.centerOwesTherapistTotal.textContent = sum.centerOwesTherapistTotal.toLocaleString('he-IL');
-        renderSummaryItemList(
-            els.centerOwesTherapistDetail,
-            sum.extras.centerOwesTherapistEnabled ? sum.extras.centerOwesTherapist : [],
-            (x) => x.name,
-            (x) => x.amount,
-            {
-                block: document.getElementById('centerOwesTherapistDetailBlock'),
-                panel: document.getElementById('centerOwesTherapistDetailPanel'),
-                toggle: document.getElementById('centerOwesTherapistDetailToggle')
-            }
-        );
         els.courseExpensesTotal.textContent = sum.courseExpensesTotal.toLocaleString('he-IL');
         els.grossIndividualTotal.textContent = sum.grossIndividualTotal.toLocaleString('he-IL');
-        els.centerTotal.textContent = sum.centerTotal.toLocaleString('he-IL');
-        els.grandTotal.textContent = sum.grandTotal.toLocaleString('he-IL');
-        els.paidToCenterTotal.textContent = `${sum.paidToCenterTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToCenterApplied.toLocaleString('he-IL')})`;
+        if (els.paidToCenterTotal) {
+            els.paidToCenterTotal.textContent = sum.paidToCenterTotal.toLocaleString('he-IL');
+        }
         els.paidToCenterTreatmentCount.textContent = sum.paidToCenterTreatmentCount.toLocaleString('he-IL');
-        els.paidToTherapistTotal.textContent = `${sum.paidToTherapistTotal.toLocaleString('he-IL')} (לפי סימון יעד: ${sum.paidToTherapistApplied.toLocaleString('he-IL')})`;
+        if (els.paidToTherapistTotal) {
+            els.paidToTherapistTotal.textContent = sum.paidToTherapistTotal.toLocaleString('he-IL');
+        }
         els.paidToTherapistTreatmentCount.textContent = sum.paidToTherapistTreatmentCount.toLocaleString('he-IL');
-        els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
-        els.remainingToTherapist.textContent = sum.remainingToTherapist.toLocaleString('he-IL');
         const netEl = els.netSettlementText;
         if (sum.netSettlement > 0) {
             netEl.textContent = `המרכז חייב למטפלת ${sum.netSettlement.toLocaleString('he-IL')} ₪`;
