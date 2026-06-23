@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260614">
+    <link rel="stylesheet" href="styles.css?v=20260615">
 </head>
 <body>
 <div class="wrap">
@@ -260,84 +260,94 @@
     <div class="card summary">
         <h2>סיכום תשלום</h2>
 
-        <div class="summary-entitlement-toggles">
-            <div class="summary-component-block is-hidden" id="therapistEntitlementDetailBlock">
-                <div class="summary-extra-toggle-row">
-                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="therapistEntitlementDetailToggle" data-panel="therapistEntitlementDetailPanel" aria-expanded="false">
-                        <span>פירוט זכאות למטפלת</span>
-                        <span class="summary-extra-chevron">▸</span>
-                    </button>
-                </div>
-                <div id="therapistEntitlementDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
-                    <ul id="therapistEntitlementDetail" class="summary-item-list"></ul>
-                </div>
-            </div>
-            <div class="summary-component-block is-hidden" id="centerEntitlementDetailBlock">
-                <div class="summary-extra-toggle-row">
-                    <button type="button" class="summary-extra-toggle summary-component-toggle" id="centerEntitlementDetailToggle" data-panel="centerEntitlementDetailPanel" aria-expanded="false">
-                        <span>פירוט זכאות למרכז</span>
-                        <span class="summary-extra-chevron">▸</span>
-                    </button>
-                </div>
-                <div id="centerEntitlementDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
-                    <ul id="centerEntitlementDetail" class="summary-item-list"></ul>
-                </div>
-            </div>
-        </div>
-
         <div class="summary-settlement-columns">
             <div class="summary-pay-zone summary-pay-zone-therapist">
-                <h3 class="summary-pay-zone-title">למטפלת</h3>
-                <dl class="summary-pay-zone-dl">
-                    <dt>סה״כ זכאות</dt>
-                    <dd><span id="grandTotal">0</span> ₪</dd>
-                    <dt class="summary-deduct-label">פחות: שולם ישירות למטפלת</dt>
-                    <dd class="summary-deduct-value">−<span id="paidToTherapistApplied">0</span> ₪</dd>
-                    <dt class="summary-final-label">עדיין לקבל מהמרכז</dt>
-                    <dd class="summary-final-value"><span id="remainingToTherapist">0</span> ₪</dd>
-                </dl>
-                <div class="summary-component-block is-hidden" id="paidToTherapistDetailBlock">
-                    <div class="summary-extra-toggle-row">
-                        <button type="button" class="summary-extra-toggle summary-component-toggle" id="paidToTherapistDetailToggle" data-panel="paidToTherapistDetailPanel" aria-expanded="false">
-                            <span>מאיפה שולם ישירות</span>
-                            <span class="summary-extra-chevron">▸</span>
-                        </button>
+                <div class="summary-pay-zone-head">
+                    <h3 class="summary-pay-zone-title">למטפלת</h3>
+                </div>
+                <div class="summary-pay-rows">
+                    <div class="summary-pay-row">
+                        <span class="summary-pay-label">סה״כ זכאות</span>
+                        <span class="summary-pay-value"><span id="grandTotal">0</span> ₪</span>
                     </div>
-                    <div id="paidToTherapistDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <div class="summary-pay-row summary-pay-row-deduct">
+                        <span class="summary-pay-label">פחות: שולם ישירות למטפלת</span>
+                        <span class="summary-pay-value">−<span id="paidToTherapistApplied">0</span> ₪</span>
+                    </div>
+                    <div class="summary-pay-row summary-pay-row-final">
+                        <span class="summary-pay-label">עדיין לקבל מהמרכז</span>
+                        <span class="summary-pay-value"><span id="remainingToTherapist">0</span> ₪</span>
+                    </div>
+                </div>
+                <div class="summary-pay-zone-links">
+                <div class="summary-component-block is-hidden" id="therapistEntitlementDetailBlock">
+                    <button type="button" class="summary-inline-toggle summary-component-toggle" id="therapistEntitlementDetailToggle" data-panel="therapistEntitlementDetailPanel" aria-expanded="false">
+                        <span>פירוט זכאות</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                    <div id="therapistEntitlementDetailPanel" class="summary-inline-panel summary-component-panel is-collapsed">
+                        <ul id="therapistEntitlementDetail" class="summary-item-list"></ul>
+                    </div>
+                </div>
+                <div class="summary-component-block is-hidden" id="paidToTherapistDetailBlock">
+                    <button type="button" class="summary-inline-toggle summary-component-toggle" id="paidToTherapistDetailToggle" data-panel="paidToTherapistDetailPanel" aria-expanded="false">
+                        <span>מאיפה שולם ישירות</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                    <div id="paidToTherapistDetailPanel" class="summary-inline-panel summary-component-panel is-collapsed">
                         <ul id="paidToTherapistDetail" class="summary-item-list"></ul>
                     </div>
                 </div>
+                </div>
             </div>
             <div class="summary-pay-zone summary-pay-zone-center">
-                <h3 class="summary-pay-zone-title">למרכז</h3>
-                <dl class="summary-pay-zone-dl">
-                    <dt>סה״כ זכאות</dt>
-                    <dd><span id="centerTotal">0</span> ₪</dd>
-                    <dt class="summary-deduct-label">פחות: שולם ישירות למרכז</dt>
-                    <dd class="summary-deduct-value">−<span id="paidToCenterApplied">0</span> ₪</dd>
-                    <dt class="summary-final-label">עדיין להעביר למרכז</dt>
-                    <dd class="summary-final-value"><span id="remainingToCenter">0</span> ₪</dd>
-                </dl>
-                <div class="summary-component-block is-hidden" id="paidToCenterDetailBlock">
-                    <div class="summary-extra-toggle-row">
-                        <button type="button" class="summary-extra-toggle summary-component-toggle" id="paidToCenterDetailToggle" data-panel="paidToCenterDetailPanel" aria-expanded="false">
-                            <span>מאיפה שולם ישירות</span>
-                            <span class="summary-extra-chevron">▸</span>
-                        </button>
+                <div class="summary-pay-zone-head">
+                    <h3 class="summary-pay-zone-title">למרכז</h3>
+                </div>
+                <div class="summary-pay-rows">
+                    <div class="summary-pay-row">
+                        <span class="summary-pay-label">סה״כ זכאות</span>
+                        <span class="summary-pay-value"><span id="centerTotal">0</span> ₪</span>
                     </div>
-                    <div id="paidToCenterDetailPanel" class="summary-extra-panel summary-component-panel is-collapsed">
+                    <div class="summary-pay-row summary-pay-row-deduct">
+                        <span class="summary-pay-label">פחות: שולם ישירות למרכז</span>
+                        <span class="summary-pay-value">−<span id="paidToCenterApplied">0</span> ₪</span>
+                    </div>
+                    <div class="summary-pay-row summary-pay-row-final">
+                        <span class="summary-pay-label">עדיין להעביר למרכז</span>
+                        <span class="summary-pay-value"><span id="remainingToCenter">0</span> ₪</span>
+                    </div>
+                </div>
+                <div class="summary-pay-zone-links">
+                <div class="summary-component-block is-hidden" id="centerEntitlementDetailBlock">
+                    <button type="button" class="summary-inline-toggle summary-component-toggle" id="centerEntitlementDetailToggle" data-panel="centerEntitlementDetailPanel" aria-expanded="false">
+                        <span>פירוט זכאות</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                    <div id="centerEntitlementDetailPanel" class="summary-inline-panel summary-component-panel is-collapsed">
+                        <ul id="centerEntitlementDetail" class="summary-item-list"></ul>
+                    </div>
+                </div>
+                <div class="summary-component-block is-hidden" id="paidToCenterDetailBlock">
+                    <button type="button" class="summary-inline-toggle summary-component-toggle" id="paidToCenterDetailToggle" data-panel="paidToCenterDetailPanel" aria-expanded="false">
+                        <span>מאיפה שולם ישירות</span>
+                        <span class="summary-extra-chevron">▸</span>
+                    </button>
+                    <div id="paidToCenterDetailPanel" class="summary-inline-panel summary-component-panel is-collapsed">
                         <ul id="paidToCenterDetail" class="summary-item-list"></ul>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
 
-        <div class="grand net-settlement-grand">
-            נטו החודש: <span id="netSettlementText">אין יתרה בין הצדדים</span>
+        <div class="net-settlement-banner">
+            <span class="net-settlement-label">נטו החודש</span>
+            <span class="net-settlement-value" id="netSettlementText">אין יתרה בין הצדדים</span>
         </div>
 
-        <div class="summary-extra-toggle-row">
-            <button type="button" class="summary-extra-toggle" id="extraCalcsToggle" aria-expanded="false">
+        <div class="summary-footer-toggle">
+            <button type="button" class="summary-inline-toggle summary-inline-toggle-muted" id="extraCalcsToggle" aria-expanded="false">
                 <span>פרטים לחישוב</span>
                 <span class="summary-extra-chevron">▸</span>
             </button>
@@ -447,7 +457,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260614"></script>
+<script src="app.js?v=20260615"></script>
 
 </body>
 </html>

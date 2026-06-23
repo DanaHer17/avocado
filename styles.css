@@ -550,78 +550,190 @@
         .mini-note { color: var(--muted); font-size: 0.74rem; margin-top: 0.25rem; }
         .is-hidden { display: none !important; }
         .summary {
-            background: linear-gradient(135deg, #134e4a 0%, #0f766e 100%);
+            background: linear-gradient(145deg, #0f3d3a 0%, #115e59 48%, #0d4f4a 100%);
             color: #ecfdf5;
             border: none;
+            box-shadow: 0 10px 28px rgba(15, 61, 58, 0.22);
         }
-        .summary h2 { font-size: 1rem; margin: 0 0 0.75rem; font-weight: 600; }
-        .summary-entitlement-toggles {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem 0.75rem;
-            margin-bottom: 0.65rem;
-        }
-        .summary-entitlement-toggles .summary-component-block {
-            margin: 0;
-        }
-        .summary-entitlement-toggles .summary-extra-toggle-row {
-            margin-top: 0;
+        .summary h2 {
+            font-size: 1.05rem;
+            margin: 0 0 1rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
         }
         .summary-settlement-columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-top: 0.25rem;
+            gap: 1rem;
+        }
+        .summary-pay-zone {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            padding: 0.9rem 1rem 0.85rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .summary-pay-zone-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
         }
         .summary-pay-zone-title {
-            margin: 0 0 0.45rem;
-            font-size: 0.88rem;
-            font-weight: 700;
-        }
-        .summary-pay-zone-dl {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0.3rem 0.75rem;
             margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+        .summary-pay-zone-therapist {
+            background: linear-gradient(160deg, rgba(16, 185, 129, 0.22) 0%, rgba(6, 95, 70, 0.28) 100%);
+            border-color: rgba(110, 231, 183, 0.35);
+        }
+        .summary-pay-zone-therapist .summary-pay-zone-title {
+            color: #d1fae5;
+        }
+        .summary-pay-zone-center {
+            background: linear-gradient(160deg, rgba(59, 130, 246, 0.2) 0%, rgba(30, 64, 175, 0.26) 100%);
+            border-color: rgba(147, 197, 253, 0.35);
+        }
+        .summary-pay-zone-center .summary-pay-zone-title {
+            color: #dbeafe;
+        }
+        .summary-pay-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+        }
+        .summary-pay-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.35rem 0.1rem;
             font-size: 0.86rem;
         }
-        .summary-pay-zone-dl dt {
-            color: rgba(236, 253, 245, 0.78);
+        .summary-pay-label {
+            color: rgba(236, 253, 245, 0.82);
+            line-height: 1.35;
         }
-        .summary-pay-zone-dl .summary-deduct-label,
-        .summary-pay-zone-dl .summary-deduct-value {
-            color: #fde68a;
-        }
-        .summary-pay-zone-dl .summary-final-label,
-        .summary-pay-zone-dl .summary-final-value {
-            margin-top: 0.25rem;
-            padding-top: 0.35rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        .summary-pay-value {
+            flex-shrink: 0;
             font-weight: 700;
-            font-size: 0.92rem;
+            font-variant-numeric: tabular-nums;
+            color: #f8fafc;
+            white-space: nowrap;
+        }
+        .summary-pay-row-deduct .summary-pay-label,
+        .summary-pay-row-deduct .summary-pay-value {
+            color: #fcd34d;
+            font-weight: 600;
+        }
+        .summary-pay-row-final {
+            margin-top: 0.15rem;
+            padding: 0.55rem 0.65rem;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .summary-pay-row-final .summary-pay-label {
+            color: #ecfdf5;
+            font-weight: 700;
+        }
+        .summary-pay-row-final .summary-pay-value {
+            font-size: 1rem;
+            color: #fef08a;
         }
         .summary-pay-zone .summary-component-block {
-            margin-top: 0.35rem;
+            margin: 0;
         }
-        .summary-pay-zone .summary-extra-toggle-row {
-            margin-top: 0;
+        .summary-pay-zone-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem 1rem;
+            padding-top: 0.15rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .summary-inline-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border: none;
+            background: transparent;
+            color: rgba(236, 253, 245, 0.9);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.15rem 0;
+            text-decoration: underline;
+            text-decoration-color: rgba(236, 253, 245, 0.35);
+            text-underline-offset: 3px;
+        }
+        .summary-inline-toggle:hover {
+            color: #fff;
+            text-decoration-color: rgba(255, 255, 255, 0.65);
+        }
+        .summary-inline-toggle-muted {
+            color: rgba(236, 253, 245, 0.72);
+        }
+        .summary-inline-panel {
+            margin-top: 0.35rem;
+            padding: 0.5rem 0.55rem;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .summary-inline-panel.is-collapsed {
+            display: none;
+        }
+        .net-settlement-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.28);
+            border: 1px solid rgba(254, 240, 138, 0.28);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .net-settlement-label {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: rgba(236, 253, 245, 0.88);
+            flex-shrink: 0;
+        }
+        .net-settlement-value {
+            font-size: 1.02rem;
+            font-weight: 800;
+            color: #fef08a;
+            text-align: left;
+            font-variant-numeric: tabular-nums;
+        }
+        .summary-footer-toggle {
+            margin-top: 0.75rem;
         }
         .summary-accounting-dl {
             display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0.35rem 1rem;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.4rem 1.25rem;
             margin: 0;
-            font-size: 0.86rem;
+            font-size: 0.84rem;
+        }
+        .summary-accounting-dl dt {
+            color: rgba(236, 253, 245, 0.72);
+        }
+        .summary-accounting-dl dd {
+            margin: 0;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            text-align: left;
+            color: #f8fafc;
         }
         .summary-accounting-dl > .summary-component-block {
             grid-column: 1 / -1;
-        }
-        .net-settlement-grand {
-            margin-top: 0.85rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid rgba(255,255,255,.25);
-            font-size: 1.05rem;
-            font-weight: 700;
         }
         .summary dl {
             display: grid;
@@ -692,19 +804,11 @@
             border-radius: 10px;
             margin-top: 0;
         }
-        .summary-pay-zone-center {
-            background: rgba(59, 130, 246, 0.16);
-            border: 1px solid rgba(147, 197, 253, 0.38);
-        }
         .summary-pay-zone-center dt {
             color: #bfdbfe;
         }
         .summary-pay-zone-center dd {
             color: #eff6ff;
-        }
-        .summary-pay-zone-therapist {
-            background: rgba(16, 185, 129, 0.16);
-            border: 1px solid rgba(110, 231, 183, 0.38);
         }
         .summary-pay-zone-therapist dt {
             color: #a7f3d0;
@@ -729,29 +833,32 @@
             margin: 0;
             padding: 0;
             width: 100%;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: 500;
-            color: rgba(236, 253, 245, 0.88);
+            color: rgba(236, 253, 245, 0.9);
         }
         .summary-item-list li {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            gap: 0.5rem;
-            padding: 0.15rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 0.75rem;
+            padding: 0.28rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
         .summary-item-list li:last-child {
             border-bottom: none;
+            padding-bottom: 0;
         }
         .summary-item-name {
             text-align: right;
             flex: 1;
+            line-height: 1.35;
         }
         .summary-item-amount {
             flex-shrink: 0;
             font-variant-numeric: tabular-nums;
-            color: #fde047;
+            font-weight: 700;
+            color: #f8fafc;
         }
         .net-settlement-details {
             margin-top: 0.75rem;
@@ -844,6 +951,14 @@
         @media (max-width: 760px) {
             .summary-settlement-columns {
                 grid-template-columns: 1fr;
+            }
+            .net-settlement-banner {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .net-settlement-value {
+                text-align: center;
             }
         }
         @media (max-width: 1100px) {
@@ -1016,16 +1131,23 @@
                 print-color-adjust: exact;
                 -webkit-print-color-adjust: exact;
             }
-            .summary-pay-zone-center dt { color: #1e40af !important; }
-            .summary-pay-zone-center dd { color: #1e3a8a !important; }
+            .summary-pay-zone-center .summary-pay-label { color: #1e40af !important; }
+            .summary-pay-zone-center .summary-pay-value { color: #1e3a8a !important; }
             .summary-pay-zone-therapist {
                 background: #d1fae5 !important;
                 border-color: #6ee7b7 !important;
                 print-color-adjust: exact;
                 -webkit-print-color-adjust: exact;
             }
-            .summary-pay-zone-therapist dt { color: #065f46 !important; }
-            .summary-pay-zone-therapist dd { color: #047857 !important; }
+            .summary-pay-zone-therapist .summary-pay-label { color: #065f46 !important; }
+            .summary-pay-zone-therapist .summary-pay-value { color: #047857 !important; }
+            .net-settlement-banner {
+                background: #fef9c3 !important;
+                border-color: #facc15 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .net-settlement-value { color: #854d0e !important; }
             #patientTable .btn-mini,
             #patientTable .btn-mini-alt,
             #patientTable .add-date-btn,
