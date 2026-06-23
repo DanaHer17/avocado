@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260615">
+    <link rel="stylesheet" href="styles.css?v=20260617">
 </head>
 <body>
 <div class="wrap">
@@ -260,6 +260,12 @@
     <div class="card summary">
         <h2>סיכום תשלום</h2>
 
+        <div class="net-settlement-banner net-settlement-banner-hero">
+            <span class="net-settlement-label">לתשלום אחרי קיזוז</span>
+            <span class="net-settlement-value" id="netSettlementText">אין יתרה בין הצדדים</span>
+        </div>
+        <p class="summary-net-hint">המרכז והמטפלת מתקזזים ביניהם — למטה פירוט הזכאות והתשלומים הישירים שמובילים לסכום הזה.</p>
+
         <div class="summary-settlement-columns">
             <div class="summary-pay-zone summary-pay-zone-therapist">
                 <div class="summary-pay-zone-head">
@@ -271,12 +277,8 @@
                         <span class="summary-pay-value"><span id="grandTotal">0</span> ₪</span>
                     </div>
                     <div class="summary-pay-row summary-pay-row-deduct">
-                        <span class="summary-pay-label">פחות: שולם ישירות למטפלת</span>
+                        <span class="summary-pay-label">פחות: חלק מטפלת ששולם ישירות</span>
                         <span class="summary-pay-value">−<span id="paidToTherapistApplied">0</span> ₪</span>
-                    </div>
-                    <div class="summary-pay-row summary-pay-row-final">
-                        <span class="summary-pay-label">עדיין לקבל מהמרכז</span>
-                        <span class="summary-pay-value"><span id="remainingToTherapist">0</span> ₪</span>
                     </div>
                 </div>
                 <div class="summary-pay-zone-links">
@@ -291,11 +293,12 @@
                 </div>
                 <div class="summary-component-block is-hidden" id="paidToTherapistDetailBlock">
                     <button type="button" class="summary-inline-toggle summary-component-toggle" id="paidToTherapistDetailToggle" data-panel="paidToTherapistDetailPanel" aria-expanded="false">
-                        <span>מאיפה שולם ישירות</span>
+                        <span>פירוט תשלומים ישירים</span>
                         <span class="summary-extra-chevron">▸</span>
                     </button>
                     <div id="paidToTherapistDetailPanel" class="summary-inline-panel summary-component-panel is-collapsed">
-                        <ul id="paidToTherapistDetail" class="summary-item-list"></ul>
+                        <p class="summary-direct-panel-note">שורה = מה ששילם המטופל · הקיזוז = החלק שנספר במערכת</p>
+                        <ul id="paidToTherapistDetail" class="summary-item-list summary-direct-list"></ul>
                     </div>
                 </div>
                 </div>
@@ -310,12 +313,8 @@
                         <span class="summary-pay-value"><span id="centerTotal">0</span> ₪</span>
                     </div>
                     <div class="summary-pay-row summary-pay-row-deduct">
-                        <span class="summary-pay-label">פחות: שולם ישירות למרכז</span>
+                        <span class="summary-pay-label">פחות: חלק מרכז ששולם ישירות</span>
                         <span class="summary-pay-value">−<span id="paidToCenterApplied">0</span> ₪</span>
-                    </div>
-                    <div class="summary-pay-row summary-pay-row-final">
-                        <span class="summary-pay-label">עדיין להעביר למרכז</span>
-                        <span class="summary-pay-value"><span id="remainingToCenter">0</span> ₪</span>
                     </div>
                 </div>
                 <div class="summary-pay-zone-links">
@@ -330,20 +329,16 @@
                 </div>
                 <div class="summary-component-block is-hidden" id="paidToCenterDetailBlock">
                     <button type="button" class="summary-inline-toggle summary-component-toggle" id="paidToCenterDetailToggle" data-panel="paidToCenterDetailPanel" aria-expanded="false">
-                        <span>מאיפה שולם ישירות</span>
+                        <span>פירוט תשלומים ישירים</span>
                         <span class="summary-extra-chevron">▸</span>
                     </button>
                     <div id="paidToCenterDetailPanel" class="summary-inline-panel summary-component-panel is-collapsed">
-                        <ul id="paidToCenterDetail" class="summary-item-list"></ul>
+                        <p class="summary-direct-panel-note">שורה = מה ששילם המטופל · הקיזוז = החלק שנספר במערכת</p>
+                        <ul id="paidToCenterDetail" class="summary-item-list summary-direct-list"></ul>
                     </div>
                 </div>
                 </div>
             </div>
-        </div>
-
-        <div class="net-settlement-banner">
-            <span class="net-settlement-label">נטו החודש</span>
-            <span class="net-settlement-value" id="netSettlementText">אין יתרה בין הצדדים</span>
         </div>
 
         <div class="summary-footer-toggle">
@@ -403,6 +398,10 @@
                 <dd id="paidToTherapistTotal">0</dd>
                 <dt>מפגשי טיפול ששולמו ישירות למטפלת</dt>
                 <dd id="paidToTherapistTreatmentCount">0</dd>
+                <dt>יתרה למטפלת לפני נטו (תיעוד)</dt>
+                <dd id="remainingToTherapist">0</dd>
+                <dt>יתרה למרכז לפני נטו (תיעוד)</dt>
+                <dd id="remainingToCenter">0</dd>
             </dl>
         </div>
     </div>
@@ -457,7 +456,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260615"></script>
+<script src="app.js?v=20260617"></script>
 
 </body>
 </html>

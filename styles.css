@@ -650,10 +650,45 @@
         }
         .summary-pay-zone-links {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem 1rem;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.45rem;
             padding-top: 0.15rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .summary-pay-zone-links .summary-component-block {
+            width: 100%;
+        }
+        .summary-direct-panel-note {
+            margin: 0 0 0.45rem;
+            font-size: 0.72rem;
+            line-height: 1.4;
+            color: rgba(236, 253, 245, 0.68);
+        }
+        .summary-direct-list .summary-direct-item {
+            display: block;
+            padding: 0.45rem 0;
+        }
+        .summary-direct-list .summary-item-name {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+        .summary-direct-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.12rem;
+            font-size: 0.76rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            line-height: 1.4;
+        }
+        .summary-direct-paid {
+            color: #f8fafc;
+        }
+        .summary-direct-offset {
+            color: #fcd34d;
         }
         .summary-inline-toggle {
             display: inline-flex;
@@ -692,12 +727,23 @@
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
-            margin-top: 1rem;
             padding: 0.75rem 1rem;
             border-radius: 12px;
             background: rgba(15, 23, 42, 0.28);
             border: 1px solid rgba(254, 240, 138, 0.28);
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .net-settlement-banner-hero {
+            margin: 0 0 0.5rem;
+            padding: 0.9rem 1.1rem;
+            background: rgba(15, 23, 42, 0.38);
+            border-color: rgba(254, 240, 138, 0.42);
+        }
+        .summary-net-hint {
+            margin: 0 0 1rem;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            color: rgba(236, 253, 245, 0.72);
         }
         .net-settlement-label {
             font-size: 0.88rem;
@@ -711,6 +757,9 @@
             color: #fef08a;
             text-align: left;
             font-variant-numeric: tabular-nums;
+        }
+        .net-settlement-banner-hero .net-settlement-value {
+            font-size: 1.15rem;
         }
         .summary-footer-toggle {
             margin-top: 0.75rem;

@@ -702,12 +702,12 @@
         if (paidToCenter) {
             counters.paidToCenterTotal += gross;
             counters.paidToCenterApplied += centerShare;
-            if (breakdown && label) breakdown.center.push({ label, amount: centerShare });
+            if (breakdown && label) breakdown.center.push({ label, amount: centerShare, gross });
         }
         if (paidToTherapist) {
             counters.paidToTherapistTotal += gross;
             counters.paidToTherapistApplied += therapistShare;
-            if (breakdown && label) breakdown.therapist.push({ label, amount: therapistShare });
+            if (breakdown && label) breakdown.therapist.push({ label, amount: therapistShare, gross });
         }
     }
 
@@ -1583,13 +1583,13 @@ ${d.fullName || '—'}
                 paidToCenterTotal += grossRow;
                 paidToCenterApplied += centerShare;
                 paidToCenterTreatmentCount += billable;
-                paidDirectBreakdown.center.push({ label: patientLabel, amount: centerShare });
+                paidDirectBreakdown.center.push({ label: patientLabel, amount: centerShare, gross: grossRow });
             }
             if (paidToTherapist) {
                 paidToTherapistTotal += grossRow;
                 paidToTherapistApplied += therapistShare;
                 paidToTherapistTreatmentCount += billable;
-                paidDirectBreakdown.therapist.push({ label: patientLabel, amount: therapistShare });
+                paidDirectBreakdown.therapist.push({ label: patientLabel, amount: therapistShare, gross: grossRow });
             }
         });
         const g = collectGroupState();
@@ -1821,6 +1821,42 @@ ${d.fullName || '—'}
         }
     }
 
+    function renderPaidDirectBreakdownList(container, rows, shareLabel, ui) {
+        if (!container) return;
+        const block = ui && ui.block;
+        const panel = ui && ui.panel;
+        const toggle = ui && ui.toggle;
+        const list = (Array.isArray(rows) ? rows : []).filter((row) => row && row.amount > 0);
+        if (!list.length) {
+            container.innerHTML = '';
+            if (block) block.classList.add('is-hidden');
+            if (panel) panel.classList.add('is-collapsed');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+                const chev = toggle.querySelector('.summary-extra-chevron');
+                if (chev) chev.textContent = '▸';
+            }
+            return;
+        }
+        if (block) block.classList.remove('is-hidden');
+        container.innerHTML = list
+            .map((row) => {
+                const gross = Math.max(0, toAmount(row.gross, 0));
+                const applied = Math.max(0, toAmount(row.amount, 0));
+                const grossText = gross.toLocaleString('he-IL');
+                const appliedText = applied.toLocaleString('he-IL');
+                const metaHtml = gross > 0 && gross !== applied
+                    ? `<span class="summary-direct-paid">שולם: ${grossText} ₪</span>` +
+                      `<span class="summary-direct-offset">קיזוז (${shareLabel}): ${appliedText} ₪</span>`
+                    : `<span class="summary-direct-paid">שולם: ${gross > 0 ? grossText : appliedText} ₪</span>` +
+                      `<span class="summary-direct-offset">קיזוז (${shareLabel}): ${appliedText} ₪</span>`;
+                return `<li class="summary-direct-item">` +
+                    `<span class="summary-item-name">${escapeHtml(row.label)}</span>` +
+                    `<div class="summary-direct-meta">${metaHtml}</div></li>`;
+            })
+            .join('');
+    }
+
     function renderSummaryAmountList(container, rows, ui) {
         if (!container) return;
         const block = ui && ui.block;
@@ -1957,11 +1993,9 @@ ${d.fullName || '—'}
         aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
         aoa.push(['סה״כ זכאות המרכז (₪)', sum.centerTotal]);
         aoa.push(['סה״כ זכאות המטפלת (₪)', sum.grandTotal]);
-        aoa.push(['שולם ישירות למרכז (₪)', sum.paidToCenterApplied]);
-        aoa.push(['שולם ישירות למטפלת (₪)', sum.paidToTherapistApplied]);
-        aoa.push(['עדיין להעביר למרכז (₪)', sum.remainingToCenter]);
-        aoa.push(['עדיין לקבל מהמרכז (₪)', sum.remainingToTherapist]);
-        aoa.push(['נטו החודש', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')]);
+        aoa.push(['לתשלום אחרי קיזוז', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')]);
+        aoa.push(['חלק מטפלת ששולם ישירות (בקיזוז) (₪)', sum.paidToTherapistApplied]);
+        aoa.push(['חלק מרכז ששולם ישירות (בקיזוז) (₪)', sum.paidToCenterApplied]);
         aoa.push(['סכום גולמי ששולם ישירות למרכז (₪)', sum.paidToCenterTotal]);
         aoa.push(['מפגשי טיפול ששולמו ישירות למרכז', sum.paidToCenterTreatmentCount]);
         aoa.push(['סכום גולמי ששולם ישירות למטפלת (₪)', sum.paidToTherapistTotal]);
@@ -2126,9 +2160,8 @@ ${d.fullName || '—'}
             `<strong>סה״כ הכנסה פרטנית:</strong> ${sum.grossIndividualTotal} ₪<br>` +
             `<strong>סה״כ זכאות המטפלת:</strong> ${sum.grandTotal} ₪<br>` +
             `<strong>סה״כ זכאות המרכז:</strong> ${sum.centerTotal} ₪<br>` +
-            `<strong>שולם ישירות למרכז:</strong> ${sum.paidToCenterApplied} ₪ &nbsp;|&nbsp; <strong>שולם ישירות למטפלת:</strong> ${sum.paidToTherapistApplied} ₪<br>` +
-            `<strong>עדיין להעביר למרכז:</strong> ${sum.remainingToCenter} ₪ &nbsp;|&nbsp; <strong>עדיין לקבל מהמרכז:</strong> ${sum.remainingToTherapist} ₪<br>` +
-            `<strong>נטו החודש:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')}<br>` +
+            `<strong>לתשלום אחרי קיזוז:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')}<br>` +
+            `<strong>חלק מטפלת ששולם ישירות (בקיזוז):</strong> ${sum.paidToTherapistApplied} ₪ &nbsp;|&nbsp; <strong>חלק מרכז ששולם ישירות (בקיזוז):</strong> ${sum.paidToCenterApplied} ₪<br>` +
             `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
             `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
@@ -2714,12 +2747,12 @@ ${d.fullName || '—'}
             panel: document.getElementById('centerEntitlementDetailPanel'),
             toggle: document.getElementById('centerEntitlementDetailToggle')
         });
-        renderSummaryAmountList(els.paidToTherapistDetail, sum.paidDirectBreakdown.therapist, {
+        renderPaidDirectBreakdownList(els.paidToTherapistDetail, sum.paidDirectBreakdown.therapist, 'חלק מטפלת', {
             block: document.getElementById('paidToTherapistDetailBlock'),
             panel: document.getElementById('paidToTherapistDetailPanel'),
             toggle: document.getElementById('paidToTherapistDetailToggle')
         });
-        renderSummaryAmountList(els.paidToCenterDetail, sum.paidDirectBreakdown.center, {
+        renderPaidDirectBreakdownList(els.paidToCenterDetail, sum.paidDirectBreakdown.center, 'חלק מרכז', {
             block: document.getElementById('paidToCenterDetailBlock'),
             panel: document.getElementById('paidToCenterDetailPanel'),
             toggle: document.getElementById('paidToCenterDetailToggle')
@@ -2732,8 +2765,12 @@ ${d.fullName || '—'}
         if (els.paidToCenterApplied) {
             els.paidToCenterApplied.textContent = sum.paidToCenterApplied.toLocaleString('he-IL');
         }
-        els.remainingToTherapist.textContent = sum.remainingToTherapist.toLocaleString('he-IL');
-        els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
+        if (els.remainingToTherapist) {
+            els.remainingToTherapist.textContent = sum.remainingToTherapist.toLocaleString('he-IL');
+        }
+        if (els.remainingToCenter) {
+            els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
+        }
         els.totalBillable.textContent = sum.totalBillable.toLocaleString('he-IL');
         els.totalUnpaidCancels.textContent = sum.totalUnpaid.toLocaleString('he-IL');
         els.individualTotal.textContent = sum.individualTotal.toLocaleString('he-IL');
