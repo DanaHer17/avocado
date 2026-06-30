@@ -273,10 +273,33 @@
         inp.title = 'מתעדכן אוטומטית לפי תאריכים';
     }
 
-    function formatRowTotalLabel(gross, meetings, paidCancelCount) {
-        if (!gross) return '—';
+    function defaultClientChargeForSession(entry, role, clientRate, stMap) {
+        if (role !== ROLE_SPEECH) {
+            const st = stMap[String(entry.sessionTypeId || '')];
+            return st ? st.fullPrice : clientRate;
+        }
+        return clientRate;
+    }
+
+    function clientChargeForSession(entry, role, clientRate, stMap) {
+        if (entry && entry.clientCharge != null && entry.clientCharge !== '') {
+            const n = parseFloat(entry.clientCharge);
+            if (!Number.isNaN(n)) return Math.max(0, n);
+        }
+        return defaultClientChargeForSession(entry, role, clientRate, stMap);
+    }
+
+    function formatRowTotalLabel(gross, meetings, paidCancelCount, chargedMeetings) {
+        if (!gross && !meetings && !paidCancelCount) return '—';
         const parts = [];
-        if (meetings > 0) parts.push(`${meetings} מפגשים`);
+        if (meetings > 0) {
+            const charged = chargedMeetings == null ? meetings : chargedMeetings;
+            if (charged > 0 && charged < meetings) {
+                parts.push(`${meetings} מפגשים (חיוב על ${charged})`);
+            } else {
+                parts.push(`${meetings} מפגשים`);
+            }
+        }
         if (paidCancelCount > 0) parts.push(`${paidCancelCount} ביטול בתשלום`);
         const detail = parts.length ? ` (${parts.join(' + ')})` : '';
         return gross.toLocaleString('he-IL') + ' ₪' + detail;
@@ -293,7 +316,11 @@
         const typeSelect = roleUsesSessionTypes()
             ? `<select class="sess-type-select" title="סוג מפגש">${sessionTypeOptionsHtml(typeId)}</select>`
             : '';
-        return `<span class="date-slot">${inputHtml}${typeSelect}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
+        const chargeRaw = raw.clientCharge;
+        const hasCharge = chargeRaw != null && chargeRaw !== '';
+        const chargeVal = hasCharge ? Math.max(0, parseFloat(chargeRaw) || 0) : '';
+        const chargeHtml = `<input type="number" class="sess-client-charge" min="0" step="1" value="${escapeAttr(chargeVal)}" placeholder="₪" title="סכום חיוב למפגש (ריק = תעריף רגיל; שכר מטפלת ללא שינוי)" aria-label="סכום חיוב למפגש" />`;
+        return `<span class="date-slot">${inputHtml}${typeSelect}${chargeHtml}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
     }
 
     function buildCancelPaidSlotHtml(item) {
@@ -929,15 +956,17 @@
         const bulkBtn = tr.querySelector('.bulk-date-btn');
 
         list.addEventListener('input', (e) => {
-            if (!e.target.matches('.sess-date, .sess-date-legacy, .sess-type-select')) return;
+            if (!e.target.matches('.sess-date, .sess-date-legacy, .sess-type-select, .sess-client-charge')) return;
             syncSessionsFromDates(tr);
             if (e.target.matches('.sess-type-select')) updateSessionSlotColorsInRow(tr);
+            if (e.target.matches('.sess-client-charge')) updateSessionSlotChargeStyle(e.target);
             schedulePersist();
         });
         list.addEventListener('change', (e) => {
-            if (!e.target.matches('.sess-date, .sess-date-legacy, .sess-type-select')) return;
+            if (!e.target.matches('.sess-date, .sess-date-legacy, .sess-type-select, .sess-client-charge')) return;
             syncSessionsFromDates(tr);
             if (e.target.matches('.sess-type-select')) updateSessionSlotColorsInRow(tr);
+            if (e.target.matches('.sess-client-charge')) updateSessionSlotChargeStyle(e.target);
             schedulePersist();
         });
 
@@ -1022,22 +1051,24 @@
         const stMap = options.sessionTypeMap || sessionTypeMapFrom(collectSessionTypes());
         const entries = normalizeSessionEntries(rd.sessionEntries, rd.dates, rd.sessions);
         let meetings = 0;
+        let chargedMeetings = 0;
         let gross = 0;
         let therapist = 0;
         entries.forEach((entry) => {
             const date = String((entry && entry.date) == null ? '' : entry.date).trim();
             if (!date) return;
             meetings += 1;
+            const charge = clientChargeForSession(entry, role, clientRate, stMap);
+            if (charge > 0) chargedMeetings += 1;
+            gross += charge;
             if (role !== ROLE_SPEECH) {
                 const st = stMap[String(entry.sessionTypeId || '')];
-                gross += st ? st.fullPrice : clientRate;
                 therapist += therapistPayForSessionType(st, therapistRate);
             } else {
-                gross += clientRate;
                 therapist += therapistRate;
             }
         });
-        return { meetings, gross, therapist };
+        return { meetings, chargedMeetings, gross, therapist };
     }
 
     function rowGrossFromRd(rd, clientRate, role, sessionTypeMap) {
@@ -1073,7 +1104,8 @@
             sessionTypeMap: stMap
         });
         const paidCancelCount = (rd.cancelPaidEntries || []).filter((x) => x && x.date).length;
-        const billableMeetings = sessionsPart.meetings + paidCancelCount;
+        const chargedSessions = sessionsPart.chargedMeetings != null ? sessionsPart.chargedMeetings : sessionsPart.meetings;
+        const billableMeetings = chargedSessions + paidCancelCount;
         const rowTotal = sessionsPart.gross + (rd.cancelPaidEntries || []).reduce((acc, x) => {
             if (!x || !x.date) return acc;
             const amount = x.mode === 'custom' ? (parseFloat(x.amount) || 0) : clientRate;
@@ -1273,8 +1305,12 @@ ${d.fullName || '—'}
     function updatePatientTableLayoutMode() {
         if (!patientTableWrap) return;
         const hasCancelRows = getAllPatientTableRows().some((tr) => tr.querySelector('.cancel-slot'));
-        patientTableWrap.classList.toggle('expanded-table', hasCancelRows);
-        patientTableWrap.classList.toggle('compact-table', !hasCancelRows);
+        const hasCustomCharges = getAllPatientTableRows().some((tr) =>
+            tr.querySelector('.sess-client-charge.has-custom')
+        );
+        const expanded = hasCancelRows || hasCustomCharges;
+        patientTableWrap.classList.toggle('expanded-table', expanded);
+        patientTableWrap.classList.toggle('compact-table', !expanded);
     }
 
     function refreshSessionTypeSelectsInRows() {
@@ -1294,10 +1330,11 @@ ${d.fullName || '—'}
             const entries = readSessionEntriesFromRow(tr).filter((x) => String(x.date || '').trim());
             const list = tr.querySelector('.date-row-list');
             if (!list) return;
-            const toRender = entries.length ? entries : [{ date: '', sessionTypeId: '' }];
+            const toRender = entries.length ? entries : [{ date: '', sessionTypeId: '', clientCharge: null }];
             list.innerHTML = toRender.map((e) => buildDateSlotHtml(e)).join('');
             syncSessionsFromDates(tr);
             updateSessionSlotColorsInRow(tr);
+            updateSessionSlotChargesInRow(tr);
         });
     }
 
@@ -1329,7 +1366,10 @@ ${d.fullName || '—'}
     }
 
     function updateAllSessionSlotColors() {
-        getAllPatientTableRows().forEach(updateSessionSlotColorsInRow);
+        getAllPatientTableRows().forEach((tr) => {
+            updateSessionSlotColorsInRow(tr);
+            updateSessionSlotChargesInRow(tr);
+        });
     }
 
     function collectState() {
@@ -1945,14 +1985,16 @@ ${d.fullName || '—'}
         });
         aoa.push([]);
         aoa.push(['#', 'שם מטופל', 'תאריכי מפגשים', 'מפגשים', 'ביטול בתשלום (תאריכים)', 'ביטול ללא תשלום (תאריכים)', 'שולם', 'יעד תשלום', 'למרכז', 'למטפלת', 'סה״כ שורה (₪)', 'תעריף למפגש (₪)']);
+        const exportRole = activeRole();
+        const exportStMap = sessionTypeMapFrom(collectSessionTypes());
         getAllPatientTableRows().forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
-            const rowTotal = rowGrossFromRd(rd, sum.clientRate, activeRole(), sessionTypeMapFrom(collectSessionTypes()));
+            const rowTotal = rowGrossFromRd(rd, sum.clientRate, exportRole, exportStMap);
             const dest = paymentDestinationLabel(!!rd.paidReceived, !!rd.paidToCenter, !!rd.paidToTherapist);
             aoa.push([
                 i + 1,
                 rd.name,
-                (rd.dates || []).filter(Boolean).join(', '),
+                formatSessionEntriesForExport(rd.sessionEntries, sum.clientRate, exportRole, exportStMap),
                 rd.sessions,
                 (rd.cancelPaidEntries || [])
                     .filter((x) => x && x.date)
@@ -2130,7 +2172,12 @@ ${d.fullName || '—'}
         getAllPatientTableRows().forEach((tr, i) => {
             const rd = rowDataFromTr(tr);
             const rowTotal = rowGrossFromRd(rd, sum.clientRate, activeRole(), sessionTypeMapFrom(collectSessionTypes()));
-            const datesStr = (rd.dates || []).filter(Boolean).join(', ');
+            const datesStr = formatSessionEntriesForExport(
+                rd.sessionEntries,
+                sum.clientRate,
+                activeRole(),
+                sessionTypeMapFrom(collectSessionTypes())
+            );
             const cancelPaidStr = (rd.cancelPaidEntries || [])
                 .filter((x) => x && x.date)
                 .map((x) => `${x.date}${x.mode === 'custom' ? ` (${Math.max(0, parseFloat(x.amount) || 0)}₪)` : ' (מלא)'}`)
@@ -2411,32 +2458,71 @@ ${d.fullName || '—'}
         return arr;
     }
 
+    function readSessionChargeFromSlot(slot) {
+        const raw = slot.querySelector('.sess-client-charge')?.value.trim() || '';
+        if (raw === '') return null;
+        const n = parseFloat(raw);
+        return Number.isNaN(n) ? null : Math.max(0, n);
+    }
+
+    function updateSessionSlotChargeStyle(input) {
+        if (!input || !input.classList.contains('sess-client-charge')) return;
+        const hasCustom = String(input.value || '').trim() !== '';
+        input.classList.toggle('has-custom', hasCustom);
+    }
+
+    function updateSessionSlotChargesInRow(tr) {
+        tr.querySelectorAll('.sess-client-charge').forEach(updateSessionSlotChargeStyle);
+    }
+
     function readSessionEntriesFromRow(tr) {
         const list = tr.querySelector('.date-row-list');
         return sessionDateSlotsInList(list).map((slot) => ({
             date: slot.querySelector('.sess-date, .sess-date-legacy')?.value.trim() || '',
-            sessionTypeId: slot.querySelector('.sess-type-select')?.value || ''
+            sessionTypeId: slot.querySelector('.sess-type-select')?.value || '',
+            clientCharge: readSessionChargeFromSlot(slot)
         }));
     }
 
     function normalizeSessionEntries(inputEntries, dates, fallbackSessions) {
         let entries = Array.isArray(inputEntries)
-            ? inputEntries.map((x) => ({
-                date: String((x && x.date) == null ? '' : x.date).trim(),
-                sessionTypeId: String((x && x.sessionTypeId) == null ? '' : x.sessionTypeId).trim()
-            }))
+            ? inputEntries.map((x) => {
+                const chargeRaw = x && x.clientCharge;
+                const clientCharge = chargeRaw != null && chargeRaw !== ''
+                    ? Math.max(0, parseFloat(chargeRaw) || 0)
+                    : null;
+                return {
+                    date: String((x && x.date) == null ? '' : x.date).trim(),
+                    sessionTypeId: String((x && x.sessionTypeId) == null ? '' : x.sessionTypeId).trim(),
+                    clientCharge
+                };
+            })
             : [];
         if (entries.length && !entries.some((e) => e.date)) {
             entries = [];
         }
         if (!entries.length) {
             const d = normalizeDatesArray(dates, fallbackSessions);
-            entries = d.map((date) => ({ date, sessionTypeId: '' }));
+            entries = d.map((date) => ({ date, sessionTypeId: '', clientCharge: null }));
         }
         const filled = entries.filter((e) => e.date);
         if (filled.length) return filled;
-        if (!entries.length) entries = [{ date: '', sessionTypeId: '' }];
+        if (!entries.length) entries = [{ date: '', sessionTypeId: '', clientCharge: null }];
         return entries;
+    }
+
+    function formatSessionEntriesForExport(entries, clientRate, role, stMap) {
+        return (entries || [])
+            .filter((e) => e && e.date)
+            .map((e) => {
+                const charge = clientChargeForSession(e, role, clientRate, stMap);
+                const defaultCharge = defaultClientChargeForSession(e, role, clientRate, stMap);
+                if (e.clientCharge != null && e.clientCharge !== '' && charge !== defaultCharge) {
+                    return `${e.date} (${charge}₪)`;
+                }
+                return e.date;
+            })
+            .join(', ');
     }
 
     function normalizeCancelPaidArray(items, fallbackCount) {
@@ -2685,6 +2771,7 @@ ${d.fullName || '—'}
         renumber();
         updateRowPaidStyle(tr);
         updateSessionSlotColorsInRow(tr);
+        updateSessionSlotChargesInRow(tr);
         updatePatientTableLayoutMode();
         calculate();
     }
@@ -2731,7 +2818,7 @@ ${d.fullName || '—'}
             const paidCancelCount = paidCancelEntries.length;
             const rowTotal = sessionsPart.gross + paidCancelEntries.reduce((sum, x) => sum + x.amount, 0);
             tr.querySelector('.row-total').textContent =
-                formatRowTotalLabel(rowTotal, sessionsPart.meetings, paidCancelCount);
+                formatRowTotalLabel(rowTotal, sessionsPart.meetings, paidCancelCount, sessionsPart.chargedMeetings);
         });
 
         const sum = getSummary();

@@ -296,6 +296,27 @@
             background: transparent;
             text-align: center;
         }
+        .date-slot input.sess-client-charge {
+            width: 3.25rem;
+            min-width: 2.75rem;
+            max-width: 4rem;
+            border: none;
+            background: transparent;
+            font-size: 0.72rem;
+            padding: 0.15rem 0.1rem;
+            text-align: center;
+            color: var(--text);
+        }
+        .date-slot input.sess-client-charge::placeholder {
+            color: #94a3b8;
+            font-size: 0.68rem;
+        }
+        .date-slot input.sess-client-charge.has-custom {
+            background: #fffbeb;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #92400e;
+        }
         .date-remove {
             border: none;
             background: transparent;
