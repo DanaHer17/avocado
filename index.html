@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260618">
+    <link rel="stylesheet" href="styles.css?v=20260621">
 </head>
 <body>
 <div class="wrap">
@@ -150,7 +150,7 @@
                     <div class="mini-entry-list" id="diagnosticsBody"></div>
                     <div class="mini-toolbar">
                         <button type="button" class="btn-mini" id="addDiagnostic">+ אבחון</button>
-                        <span class="mini-note">ברירת מחדל: 900 למטפלת לכל אבחון.</span>
+                        <span class="mini-note">ברירת מחדל: 3 מפגשים (תאריכים בלבד). עלות כללית ושכר למטפלת — למלא ידנית לכל אבחון.</span>
                     </div>
                 </div>
             </div>
@@ -380,6 +380,8 @@
                 <dd id="languageEvalCenterTotal">0</dd>
                 <dt>אבחונים (למטפלת)</dt>
                 <dd id="diagnosticsTotal">0</dd>
+                <dt>אבחונים (למרכז)</dt>
+                <dd id="diagnosticsCenterTotal">0</dd>
                 <dt>מפגשי הערכה לילדי קבוצה</dt>
                 <dd id="groupAssessmentsTotal">0</dd>
                 <dt>תפקידים נוספים (למטפלת)</dt>
@@ -456,7 +458,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260618"></script>
+<script src="app.js?v=20260621"></script>
 
 </body>
 </html>

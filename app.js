@@ -23,6 +23,8 @@
     const PARENT_MEETING_HALF_MINUTES = PARENT_MEETING_DEFAULTS.halfHourMinutes || 30;
     const PARENT_MEETING_FULL_MINUTES = PARENT_MEETING_DEFAULTS.fullMinutes || 45;
     const PARENT_MEETING_HALF_PRICE = PARENT_MEETING_DEFAULTS.halfHourPrice || 150;
+    const DIAGNOSTIC_DEFAULTS = DEFAULTS.diagnostics || {};
+    const DIAGNOSTIC_SESSION_COUNT = DIAGNOSTIC_DEFAULTS.sessionCount || 3;
     /** מספר תאי תאריך בהתחלה לשורה חדשה (מוסיפים עוד עם «+ תאריך») */
     const INITIAL_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.initialDateSlots) || 1;
     const MAX_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.maxDateSlots) || 31;
@@ -108,6 +110,7 @@
         languageEvalTherapistTotal: document.getElementById('languageEvalTherapistTotal'),
         languageEvalCenterTotal: document.getElementById('languageEvalCenterTotal'),
         diagnosticsTotal: document.getElementById('diagnosticsTotal'),
+        diagnosticsCenterTotal: document.getElementById('diagnosticsCenterTotal'),
         groupAssessmentsTotal: document.getElementById('groupAssessmentsTotal'),
         extraRolesTotal: document.getElementById('extraRolesTotal'),
         additionalExpensesTotal: document.getElementById('additionalExpensesTotal'),
@@ -652,6 +655,13 @@
         return Math.max(0, n);
     }
 
+    function amountInputValue(raw) {
+        if (raw == null || raw === '') return '';
+        const n = parseFloat(raw);
+        if (Number.isNaN(n)) return '';
+        return String(Math.max(0, n));
+    }
+
     function normalizeParentMeetingDuration(value) {
         const n = Number(value);
         return n === PARENT_MEETING_HALF_MINUTES ? PARENT_MEETING_HALF_MINUTES : PARENT_MEETING_FULL_MINUTES;
@@ -775,19 +785,192 @@
         wireMiniRow(card);
     }
 
+    function defaultDiagnosticSessionDate() {
+        return { date: '' };
+    }
+
+    function padOrTrimDiagnosticSessionDates(sessions, count) {
+        const target = Math.max(1, Math.min(MAX_DATE_SLOTS, Math.floor(Number(count)) || DIAGNOSTIC_SESSION_COUNT));
+        const src = Array.isArray(sessions) ? sessions : [];
+        const out = src.slice(0, target).map((s) => ({
+            date: String((s && s.date) == null ? '' : s.date).trim()
+        }));
+        while (out.length < target) out.push(defaultDiagnosticSessionDate());
+        return out;
+    }
+
+    function normalizeDiagnosticEntry(raw) {
+        const d = raw && typeof raw === 'object' ? raw : {};
+        let sessionDates = [];
+        let total = d.total != null && d.total !== '' ? toAmount(d.total, 0) : null;
+        let therapist = d.therapist != null && d.therapist !== '' ? toAmount(d.therapist, 0) : null;
+
+        if (Array.isArray(d.sessions) && d.sessions.length) {
+            sessionDates = d.sessions.map((s) => ({
+                date: String((s && s.date) == null ? '' : s.date).trim()
+            }));
+            const hasPerSessionAmounts = d.sessions.some((s) =>
+                (s && s.total != null && s.total !== '') || (s && s.therapist != null && s.therapist !== '')
+            );
+            if (total == null && hasPerSessionAmounts) {
+                total = d.sessions.reduce((sum, s) => sum + toAmount(s && s.total, 0), 0);
+            }
+            if (therapist == null && hasPerSessionAmounts) {
+                therapist = d.sessions.reduce((sum, s) => sum + toAmount(s && s.therapist, 0), 0);
+            }
+        } else if (d.date || d.child || (d.therapist != null && d.therapist !== '')) {
+            sessionDates = [{
+                date: String(d.date || '').trim()
+            }];
+            if (therapist == null && d.therapist != null && d.therapist !== '') {
+                therapist = toAmount(d.therapist, 0);
+            }
+        }
+
+        const sessionCount = Math.max(
+            1,
+            Math.min(MAX_DATE_SLOTS, Math.floor(Number(d.sessionCount)) || sessionDates.length || DIAGNOSTIC_SESSION_COUNT)
+        );
+        const sessions = padOrTrimDiagnosticSessionDates(sessionDates, sessionCount);
+
+        let paidToCenter = !!d.paidToCenter;
+        let paidToTherapist = !!d.paidToTherapist;
+        if (paidToCenter && paidToTherapist) paidToTherapist = false;
+        return {
+            child: String(d.child || '').trim(),
+            sessionCount,
+            total,
+            therapist,
+            sessions,
+            paidToCenter,
+            paidToTherapist
+        };
+    }
+
+    function diagnosticTotalsFromEntry(entry) {
+        const gross = entry && entry.total != null && entry.total !== '' ? toAmount(entry.total, 0) : 0;
+        const therapist = entry && entry.therapist != null && entry.therapist !== '' ? toAmount(entry.therapist, 0) : 0;
+        return {
+            gross,
+            therapist,
+            center: Math.max(0, gross - therapist)
+        };
+    }
+
+    function diagnosticEntryHasContent(entry) {
+        if (!entry) return false;
+        if (String(entry.child || '').trim()) return true;
+        return (entry.sessions || []).some((s) => String((s && s.date) || '').trim());
+    }
+
+    function buildDiagnosticSessionRowHtml(idx, session) {
+        const date = String((session && session.date) == null ? '' : session.date).trim();
+        return `<div class="dg-session-row" data-session-idx="${idx - 1}">
+            <span class="dg-session-label">מפגש ${idx}</span>
+            <input type="date" class="dg-sess-date" value="${escapeAttr(date)}" aria-label="תאריך מפגש ${idx}" />
+        </div>`;
+    }
+
+    function buildDiagnosticSessionsListHtml(sessions) {
+        return (sessions || []).map((s, i) => buildDiagnosticSessionRowHtml(i + 1, s)).join('');
+    }
+
+    function updateDiagnosticCenterLabel(card) {
+        const total = toAmount(card.querySelector('.dg-total')?.value, 0);
+        const therapist = toAmount(card.querySelector('.dg-therapist')?.value, 0);
+        const centerEl = card.querySelector('.dg-center-total');
+        if (centerEl) centerEl.textContent = `${Math.max(0, total - therapist).toLocaleString('he-IL')} ₪ למרכז`;
+    }
+
+    function readDiagnosticCard(card) {
+        const sessions = Array.from(card.querySelectorAll('.dg-session-row')).map((row) => ({
+            date: row.querySelector('.dg-sess-date')?.value || ''
+        }));
+        const sessionCount = Math.max(
+            1,
+            Math.min(MAX_DATE_SLOTS, Math.floor(parseInt(card.querySelector('.dg-session-count')?.value, 10)) || sessions.length || 1)
+        );
+        const totalRaw = card.querySelector('.dg-total')?.value.trim() || '';
+        const therapistRaw = card.querySelector('.dg-therapist')?.value.trim() || '';
+        return {
+            child: card.querySelector('.dg-child')?.value.trim() || '',
+            sessionCount,
+            total: totalRaw === '' ? null : toAmount(totalRaw, 0),
+            therapist: therapistRaw === '' ? null : toAmount(therapistRaw, 0),
+            sessions: padOrTrimDiagnosticSessionDates(sessions, sessionCount),
+            ...readMiniPayTarget(card)
+        };
+    }
+
+    function rebuildDiagnosticSessions(card) {
+        const current = readDiagnosticCard(card);
+        const list = card.querySelector('.dg-sessions-list');
+        if (!list) return;
+        list.innerHTML = buildDiagnosticSessionsListHtml(current.sessions);
+        wireDiagnosticSessionInputs(card);
+    }
+
+    function wireDiagnosticSessionInputs(card) {
+        card.querySelectorAll('.dg-sess-date').forEach((inp) => {
+            if (inp.dataset.dgWired === '1') return;
+            inp.dataset.dgWired = '1';
+            inp.addEventListener('input', schedulePersist);
+            inp.addEventListener('change', schedulePersist);
+        });
+    }
+
+    function wireDiagnosticCard(card) {
+        wireMiniPayTarget(card);
+        wireDiagnosticSessionInputs(card);
+        const countInput = card.querySelector('.dg-session-count');
+        if (countInput && countInput.dataset.dgWired !== '1') {
+            countInput.dataset.dgWired = '1';
+            const onCountChange = () => {
+                rebuildDiagnosticSessions(card);
+                schedulePersist();
+            };
+            countInput.addEventListener('input', onCountChange);
+            countInput.addEventListener('change', onCountChange);
+        }
+        card.querySelectorAll('.dg-child, .dg-total, .dg-therapist').forEach((inp) => {
+            if (inp.dataset.dgWired === '1') return;
+            inp.dataset.dgWired = '1';
+            const onChange = () => {
+                if (inp.classList.contains('dg-total') || inp.classList.contains('dg-therapist')) {
+                    updateDiagnosticCenterLabel(card);
+                }
+                schedulePersist();
+            };
+            inp.addEventListener('input', onChange);
+            inp.addEventListener('change', onChange);
+        });
+        const del = card.querySelector('.mini-del');
+        if (del && del.dataset.dgWired !== '1') {
+            del.dataset.dgWired = '1';
+            del.addEventListener('click', () => {
+                card.remove();
+                schedulePersist();
+            });
+        }
+    }
+
     function addDiagnosticRow(data) {
-        const d = data || {};
+        const d = normalizeDiagnosticEntry(data);
+        const totals = diagnosticTotalsFromEntry(d);
         const card = document.createElement('div');
-        card.className = 'mini-entry-card';
+        card.className = 'mini-entry-card diagnostic-card';
         card.innerHTML = `<div class="mini-entry-grid">
             ${miniEntryFieldHtml('שם ילד', `<input type="text" class="dg-child" value="${escapeAttr(d.child)}" placeholder="שם ילד" />`)}
-            ${miniEntryFieldHtml('תאריך', `<input type="date" class="dg-date" value="${escapeAttr(d.date)}" />`)}
-            ${miniEntryFieldHtml('שכר למטפלת', `<input type="number" min="0" step="1" class="dg-pay" value="${toAmount(d.therapist, 900)}" />`)}
+            ${miniEntryFieldHtml('כמות מפגשים', `<input type="number" class="dg-session-count" min="1" max="${MAX_DATE_SLOTS}" step="1" value="${d.sessionCount}" />`)}
+            ${miniEntryFieldHtml('עלות כללית', `<input type="number" min="0" step="1" class="dg-total" value="${escapeAttr(amountInputValue(d.total))}" placeholder="₪" />`)}
+            ${miniEntryFieldHtml('שכר למטפלת', `<input type="number" min="0" step="1" class="dg-therapist" value="${escapeAttr(amountInputValue(d.therapist))}" placeholder="₪" />`)}
         </div>
+        <p class="dg-center-total" title="שארית למרכז">${totals.center.toLocaleString('he-IL')} ₪ למרכז</p>
+        <div class="dg-sessions-list">${buildDiagnosticSessionsListHtml(d.sessions)}</div>
         ${miniPayTargetFieldsHtml(d)}
         <div class="mini-entry-actions"><button type="button" class="btn btn-danger mini-del">מחק</button></div>`;
         diagnosticsBody.appendChild(card);
-        wireMiniRow(card);
+        wireDiagnosticCard(card);
     }
 
     function addGroupAssessmentRow(data) {
@@ -854,12 +1037,9 @@
             therapist: toAmount(card.querySelector('.le-therapist')?.value, 305),
             ...readMiniPayTarget(card)
         }));
-        const diagnostics = Array.from(diagnosticsBody.querySelectorAll('.mini-entry-card')).map((card) => ({
-            child: card.querySelector('.dg-child')?.value.trim() || '',
-            date: card.querySelector('.dg-date')?.value || '',
-            therapist: toAmount(card.querySelector('.dg-pay')?.value, 900),
-            ...readMiniPayTarget(card)
-        }));
+        const diagnostics = Array.from(diagnosticsBody.querySelectorAll('.diagnostic-card')).map((card) =>
+            readDiagnosticCard(card)
+        );
         const groupAssessments = Array.from(groupAssessmentsBody.querySelectorAll('tr')).map((tr) => ({
             child: tr.querySelector('.ga-child')?.value.trim() || '',
             date: tr.querySelector('.ga-date')?.value || '',
@@ -1659,14 +1839,14 @@ ${d.fullName || '—'}
         }
         if (extras.diagnosticsEnabled) {
             extras.diagnostics.forEach((x) => {
-                if (!x.child && !x.date) return;
-                const therapistShare = toAmount(x.therapist, 900);
+                if (!diagnosticEntryHasContent(x)) return;
+                const totals = diagnosticTotalsFromEntry(x);
                 const childLabel = x.child || 'אבחון';
                 accumulateExtraPayRouting(
                     x.paidToCenter,
                     x.paidToTherapist,
-                    therapistShare,
-                    therapistShare,
+                    totals.gross,
+                    totals.therapist,
                     payCounters,
                     paidDirectBreakdown,
                     `אבחון — ${childLabel}`
@@ -1692,7 +1872,10 @@ ${d.fullName || '—'}
             ? extras.languageEvaluations.reduce((sum, x) => sum + Math.max(0, toAmount(x.total, 500) - toAmount(x.therapist, 305)), 0)
             : 0;
         const diagnosticsTotal = extras.diagnosticsEnabled
-            ? extras.diagnostics.reduce((sum, x) => sum + toAmount(x.therapist, 900), 0)
+            ? extras.diagnostics.reduce((sum, x) => sum + diagnosticTotalsFromEntry(x).therapist, 0)
+            : 0;
+        const diagnosticsCenterTotal = extras.diagnosticsEnabled
+            ? extras.diagnostics.reduce((sum, x) => sum + diagnosticTotalsFromEntry(x).center, 0)
             : 0;
         const groupAssessmentsTotal = extras.groupAssessmentsEnabled
             ? extras.groupAssessments.reduce((sum, x) => sum + toAmount(x.price, 150), 0)
@@ -1714,6 +1897,7 @@ ${d.fullName || '—'}
         // ולא להפחית את סה״כ למטפלת — אחרת הם נספרים פעמיים בנטו.
         const centerTotal = Math.max(0, grossIndividualTotal - individualTotal)
             + languageEvalCenterTotal
+            + diagnosticsCenterTotal
             + courseExpensesTotal
             + additionalExpensesTotal;
         const grandTotal = individualTotal
@@ -1750,6 +1934,7 @@ ${d.fullName || '—'}
         const centerEntitlement = [];
         if (individualCenterShare > 0) centerEntitlement.push({ label: 'חלק מרכז מטיפולים פרטניים', amount: individualCenterShare });
         if (languageEvalCenterTotal > 0) centerEntitlement.push({ label: 'הערכות שפה', amount: languageEvalCenterTotal });
+        if (diagnosticsCenterTotal > 0) centerEntitlement.push({ label: 'אבחונים', amount: diagnosticsCenterTotal });
         if (courseExpensesTotal > 0) centerEntitlement.push({ label: 'הוצאות קורסים (75%)', amount: courseExpensesTotal });
         if (extras.additionalExpensesEnabled) {
             extras.additionalExpenses.forEach((x) => {
@@ -1769,6 +1954,7 @@ ${d.fullName || '—'}
             languageEvalTherapistTotal,
             languageEvalCenterTotal,
             diagnosticsTotal,
+            diagnosticsCenterTotal,
             groupAssessmentsTotal,
             extraRolesTotal,
             additionalExpensesTotal,
@@ -2046,6 +2232,7 @@ ${d.fullName || '—'}
         aoa.push(['הערכות שפה למטפלת (₪)', sum.languageEvalTherapistTotal]);
         aoa.push(['הערכות שפה למרכז (₪)', sum.languageEvalCenterTotal]);
         aoa.push(['אבחונים למטפלת (₪)', sum.diagnosticsTotal]);
+        aoa.push(['אבחונים למרכז (₪)', sum.diagnosticsCenterTotal]);
         aoa.push(['מפגשי הערכה לילדי קבוצה (₪)', sum.groupAssessmentsTotal]);
         aoa.push(['תפקידים נוספים למטפלת (₪)', sum.extraRolesTotal]);
         aoa.push(['חייבת למרכז (₪)', sum.additionalExpensesTotal]);
@@ -2098,12 +2285,18 @@ ${d.fullName || '—'}
         if (sum.extras.diagnosticsEnabled && sum.extras.diagnostics.length) {
             aoa.push([]);
             aoa.push(['אבחונים']);
-            aoa.push(['שם ילד', 'תאריך', 'שכר למטפלת', 'למרכז', 'למטפלת']);
+            aoa.push(['שם ילד', 'כמות מפגשים', 'תאריכי מפגשים', 'עלות כללית', 'שכר למטפלת', 'למרכז', 'שולם למרכז', 'שולם למטפלת']);
             sum.extras.diagnostics.forEach((x) => {
+                if (!diagnosticEntryHasContent(x)) return;
+                const totals = diagnosticTotalsFromEntry(x);
+                const dates = (x.sessions || []).map((s) => s.date).filter(Boolean).join(', ');
                 aoa.push([
                     x.child,
-                    x.date,
-                    x.therapist,
+                    x.sessionCount,
+                    dates,
+                    totals.gross,
+                    totals.therapist,
+                    totals.center,
                     extraPayMarkYes(x.paidToCenter),
                     extraPayMarkYes(x.paidToTherapist)
                 ]);
@@ -2212,6 +2405,7 @@ ${d.fullName || '—'}
             `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
             `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
+            `<strong>אבחונים למרכז:</strong> ${sum.diagnosticsCenterTotal} ₪<br>` +
             `<strong>מפגשי הערכה לילדי קבוצה:</strong> ${sum.groupAssessmentsTotal} ₪<br>` +
             `<strong>תפקידים נוספים למטפלת:</strong> ${sum.extraRolesTotal} ₪<br>` +
             `<strong>חייבת למרכז (במלוא הסכום):</strong> ${sum.additionalExpensesTotal} ₪<br>` +
@@ -2866,6 +3060,9 @@ ${d.fullName || '—'}
         els.languageEvalTherapistTotal.textContent = sum.languageEvalTherapistTotal.toLocaleString('he-IL');
         els.languageEvalCenterTotal.textContent = sum.languageEvalCenterTotal.toLocaleString('he-IL');
         els.diagnosticsTotal.textContent = sum.diagnosticsTotal.toLocaleString('he-IL');
+        if (els.diagnosticsCenterTotal) {
+            els.diagnosticsCenterTotal.textContent = sum.diagnosticsCenterTotal.toLocaleString('he-IL');
+        }
         els.groupAssessmentsTotal.textContent = sum.groupAssessmentsTotal.toLocaleString('he-IL');
         els.extraRolesTotal.textContent = sum.extraRolesTotal.toLocaleString('he-IL');
         els.additionalExpensesTotal.textContent = sum.additionalExpensesTotal.toLocaleString('he-IL');
@@ -3068,7 +3265,7 @@ ${d.fullName || '—'}
             diagnosticsEnabledInput.checked = true;
             toggleDiagnosticsVisibility();
         }
-        addDiagnosticRow({ therapist: 900 });
+        addDiagnosticRow({ sessionCount: DIAGNOSTIC_SESSION_COUNT });
         schedulePersist();
     });
     addGroupAssessmentBtn.addEventListener('click', () => {

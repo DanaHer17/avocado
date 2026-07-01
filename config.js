@@ -31,6 +31,9 @@ window.AVOCADO_CONFIG = {
             halfHourMinutes: 30,
             halfHourPrice: 150,
             fullMinutes: 45
+        },
+        diagnostics: {
+            sessionCount: 3
         }
     }
 };
