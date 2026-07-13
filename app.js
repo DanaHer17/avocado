@@ -1217,10 +1217,33 @@
             if (!st || !st.id) return;
             map[st.id] = {
                 fullPrice: Math.max(0, parseFloat(st.fullPrice) || 0),
-                therapistPrice: Math.max(0, parseFloat(st.therapistPrice) || 0)
+                therapistPrice: Math.max(0, parseFloat(st.therapistPrice) || 0),
+                name: String(st.name || '').trim() || 'סוג מפגש'
             };
         });
         return map;
+    }
+
+    function bumpSessionTypeBucket(buckets, key, label, amountGross, amountTherapist, meetings) {
+        if (!buckets[key]) {
+            buckets[key] = {
+                key,
+                label,
+                meetings: 0,
+                gross: 0,
+                therapist: 0
+            };
+        }
+        const bucket = buckets[key];
+        bucket.meetings += meetings;
+        bucket.gross += amountGross;
+        bucket.therapist += amountTherapist;
+    }
+
+    function formatSessionTypeEntitlementLabel(label, meetings) {
+        const name = String(label || '').trim() || 'סוג מפגש';
+        if (meetings > 0) return `${name} (${meetings.toLocaleString('he-IL')})`;
+        return name;
     }
 
     function sessionBreakdownFromRow(rd, opts) {
@@ -1234,6 +1257,7 @@
         let chargedMeetings = 0;
         let gross = 0;
         let therapist = 0;
+        const byType = options.byTypeBuckets || null;
         entries.forEach((entry) => {
             const date = String((entry && entry.date) == null ? '' : entry.date).trim();
             if (!date) return;
@@ -1241,12 +1265,18 @@
             const charge = clientChargeForSession(entry, role, clientRate, stMap);
             if (charge > 0) chargedMeetings += 1;
             gross += charge;
+            let therapistPay = therapistRate;
+            let typeKey = '_default';
+            let typeLabel = 'מפגשים פרטניים';
             if (role !== ROLE_SPEECH) {
-                const st = stMap[String(entry.sessionTypeId || '')];
-                therapist += therapistPayForSessionType(st, therapistRate);
-            } else {
-                therapist += therapistRate;
+                const typeId = String(entry.sessionTypeId || '').trim();
+                const st = stMap[typeId];
+                therapistPay = therapistPayForSessionType(st, therapistRate);
+                typeKey = typeId || '_none';
+                typeLabel = st ? st.name : (typeId ? 'סוג מפגש' : 'ללא סוג מפגש');
             }
+            therapist += therapistPay;
+            if (byType) bumpSessionTypeBucket(byType, typeKey, typeLabel, charge, therapistPay, 1);
         });
         return { meetings, chargedMeetings, gross, therapist };
     }
@@ -1761,6 +1791,8 @@ ${d.fullName || '—'}
         let paidToCenterTreatmentCount = 0;
         let paidToTherapistTreatmentCount = 0;
         const paidDirectBreakdown = { center: [], therapist: [] };
+        const sessionTypeBuckets = Object.create(null);
+        const usesSessionTypes = role !== ROLE_SPEECH;
         getAllPatientTableRows().forEach(tr => {
             const rd = rowDataFromTr(tr);
             const patientLabel = rd.name || 'מטופל/ת';
@@ -1768,7 +1800,8 @@ ${d.fullName || '—'}
                 role,
                 clientRate,
                 therapistRate: rate,
-                sessionTypeMap: stMap
+                sessionTypeMap: stMap,
+                byTypeBuckets: sessionTypeBuckets
             });
             const paidCancelSlots = Array.from(tr.querySelectorAll('.cancel-paid-list .cancel-slot'));
             const paidCancelEntries = paidCancelSlots
@@ -1793,6 +1826,16 @@ ${d.fullName || '—'}
             const therapistShare = sessionsPart.therapist + (cancelPaidCount * rate);
             const grossRow = sessionsPart.gross + cancelPaidAmount;
             const centerShare = Math.max(0, grossRow - therapistShare);
+            if (cancelPaidCount > 0) {
+                bumpSessionTypeBucket(
+                    sessionTypeBuckets,
+                    '_cancel',
+                    'ביטול בתשלום',
+                    cancelPaidAmount,
+                    cancelPaidCount * rate,
+                    cancelPaidCount
+                );
+            }
             totalSessions += sessionsPart.meetings;
             totalBillable += billable;
             totalUnpaid += cancelUnpaid;
@@ -1912,8 +1955,30 @@ ${d.fullName || '—'}
         const remainingToTherapist = Math.max(0, grandTotal - paidToTherapistApplied);
         const netSettlement = remainingToTherapist - remainingToCenter;
         const individualCenterShare = Math.max(0, grossIndividualTotal - individualTotal);
+        const sessionTypeOrder = collectSessionTypes().map((st) => st.id);
+        const sessionTypeBreakdown = [];
+        sessionTypeOrder.forEach((id) => {
+            if (sessionTypeBuckets[id]) sessionTypeBreakdown.push(sessionTypeBuckets[id]);
+        });
+        Object.keys(sessionTypeBuckets).forEach((key) => {
+            if (!sessionTypeOrder.includes(key)) sessionTypeBreakdown.push(sessionTypeBuckets[key]);
+        });
+        const hasTypedSessionBreakdown = usesSessionTypes && sessionTypeBreakdown.some((b) =>
+            b.key !== '_cancel' && b.key !== '_default'
+        );
         const therapistEntitlement = [];
-        if (individualTotal > 0) therapistEntitlement.push({ label: 'מפגשים פרטניים', amount: individualTotal });
+        if (hasTypedSessionBreakdown) {
+            sessionTypeBreakdown.forEach((b) => {
+                if (b.therapist > 0) {
+                    therapistEntitlement.push({
+                        label: formatSessionTypeEntitlementLabel(b.label, b.meetings),
+                        amount: b.therapist
+                    });
+                }
+            });
+        } else if (individualTotal > 0) {
+            therapistEntitlement.push({ label: 'מפגשים פרטניים', amount: individualTotal });
+        }
         if (groupTotal > 0) therapistEntitlement.push({ label: 'קבוצה', amount: groupTotal });
         if (parentMeetingsTotal > 0) therapistEntitlement.push({ label: 'פגישות הורים', amount: parentMeetingsTotal });
         if (languageEvalTherapistTotal > 0) therapistEntitlement.push({ label: 'הערכות שפה', amount: languageEvalTherapistTotal });
@@ -1932,7 +1997,19 @@ ${d.fullName || '—'}
             });
         }
         const centerEntitlement = [];
-        if (individualCenterShare > 0) centerEntitlement.push({ label: 'חלק מרכז מטיפולים פרטניים', amount: individualCenterShare });
+        if (hasTypedSessionBreakdown) {
+            sessionTypeBreakdown.forEach((b) => {
+                const centerShareForType = Math.max(0, b.gross - b.therapist);
+                if (centerShareForType > 0) {
+                    centerEntitlement.push({
+                        label: formatSessionTypeEntitlementLabel(b.label, b.meetings),
+                        amount: centerShareForType
+                    });
+                }
+            });
+        } else if (individualCenterShare > 0) {
+            centerEntitlement.push({ label: 'חלק מרכז מטיפולים פרטניים', amount: individualCenterShare });
+        }
         if (languageEvalCenterTotal > 0) centerEntitlement.push({ label: 'הערכות שפה', amount: languageEvalCenterTotal });
         if (diagnosticsCenterTotal > 0) centerEntitlement.push({ label: 'אבחונים', amount: diagnosticsCenterTotal });
         if (courseExpensesTotal > 0) centerEntitlement.push({ label: 'הוצאות קורסים (75%)', amount: courseExpensesTotal });
@@ -1975,6 +2052,8 @@ ${d.fullName || '—'}
             netSettlement,
             therapistEntitlement,
             centerEntitlement,
+            sessionTypeBreakdown,
+            hasTypedSessionBreakdown,
             paidDirectBreakdown,
             group: g,
             extras
@@ -2219,6 +2298,22 @@ ${d.fullName || '—'}
         aoa.push(['סה״כ ביטולים ללא תשלום', sum.totalUnpaid]);
         aoa.push(['שכר מטפלת מטיפולים פרטניים (₪)', sum.individualTotal]);
         aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
+        if (sum.hasTypedSessionBreakdown && Array.isArray(sum.sessionTypeBreakdown) && sum.sessionTypeBreakdown.length) {
+            aoa.push([]);
+            aoa.push(['פירוט לפי סוג מפגש']);
+            aoa.push(['סוג מפגש', 'מפגשים', 'עלות כללית (₪)', 'למטפלת (₪)', 'למרכז (₪)']);
+            sum.sessionTypeBreakdown.forEach((b) => {
+                const centerShareForType = Math.max(0, b.gross - b.therapist);
+                if (!b.meetings && !b.gross && !b.therapist) return;
+                aoa.push([
+                    b.label,
+                    b.meetings,
+                    b.gross,
+                    b.therapist,
+                    centerShareForType
+                ]);
+            });
+        }
         aoa.push(['סה״כ זכאות המרכז (₪)', sum.centerTotal]);
         aoa.push(['סה״כ זכאות המטפלת (₪)', sum.grandTotal]);
         aoa.push(['לתשלום אחרי קיזוז', sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')]);
@@ -3027,6 +3122,13 @@ ${d.fullName || '—'}
             block: document.getElementById('centerEntitlementDetailBlock'),
             panel: document.getElementById('centerEntitlementDetailPanel'),
             toggle: document.getElementById('centerEntitlementDetailToggle')
+        });
+        const entitlementToggleLabel = sum.hasTypedSessionBreakdown
+            ? 'פירוט זכאות לפי סוגי מפגש'
+            : 'פירוט זכאות';
+        ['therapistEntitlementDetailToggle', 'centerEntitlementDetailToggle'].forEach((id) => {
+            const labelEl = document.querySelector(`#${id} > span:first-child`);
+            if (labelEl) labelEl.textContent = entitlementToggleLabel;
         });
         renderPaidDirectBreakdownList(els.paidToTherapistDetail, sum.paidDirectBreakdown.therapist, 'חלק מטפלת', {
             block: document.getElementById('paidToTherapistDetailBlock'),
