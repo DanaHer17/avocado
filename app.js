@@ -3391,12 +3391,143 @@ ${d.fullName || '—'}
         }, 2500);
     });
 
+    let printViewState = null;
+
+    function formatPrintDateValue(raw) {
+        const v = String(raw == null ? '' : raw).trim();
+        if (!v) return '';
+        const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+        return v;
+    }
+
+    function hideFieldsForPrint(root, hiddenList) {
+        if (!root) return;
+        root.querySelectorAll('input, select, textarea, button, .date-row-list, .cancel-row-list, .name-input-shell, .note-edit, .add-note-btn, .note-display').forEach((el) => {
+            if (el.classList.contains('print-cell-text')) return;
+            el.classList.add('print-hide-field');
+            hiddenList.push(el);
+        });
+    }
+
+    function attachPrintMirror(cell, text, hiddenList) {
+        if (!cell) return null;
+        const value = String(text == null ? '' : text).trim();
+        const span = document.createElement('div');
+        span.className = 'print-cell-text';
+        span.textContent = value || '—';
+        hideFieldsForPrint(cell, hiddenList);
+        cell.appendChild(span);
+        return span;
+    }
+
+    function patientDatesPrintText(tr) {
+        const parts = [];
+        tr.querySelectorAll('.date-slot').forEach((slot) => {
+            const date = formatPrintDateValue(slot.querySelector('.sess-date, .sess-date-legacy')?.value);
+            if (!date) return;
+            const charge = slot.querySelector('.sess-client-charge')?.value.trim() || '';
+            parts.push(charge ? `${date} (${charge} ₪)` : date);
+        });
+        return parts.join(' · ');
+    }
+
+    function patientCancelPaidPrintText(tr) {
+        return Array.from(tr.querySelectorAll('.cancel-paid-list .cancel-slot'))
+            .map((slot) => {
+                const date = formatPrintDateValue(slot.querySelector('.cancel-paid-date')?.value);
+                if (!date) return '';
+                const mode = slot.querySelector('.cancel-paid-mode')?.value === 'custom' ? 'custom' : 'full';
+                const amount = slot.querySelector('.cancel-amount')?.value.trim() || '';
+                return mode === 'custom' && amount ? `${date} (${amount} ₪)` : `${date} (מלא)`;
+            })
+            .filter(Boolean)
+            .join(' · ');
+    }
+
+    function patientCancelUnpaidPrintText(tr) {
+        return Array.from(tr.querySelectorAll('.cancel-unpaid-list .cancel-unpaid-date'))
+            .map((inp) => formatPrintDateValue(inp.value))
+            .filter(Boolean)
+            .join(' · ');
+    }
+
+    function patientNotePrintText(tr) {
+        const noteCell = tr.querySelector('.col-note');
+        if (!noteCell) return '';
+        const visible = noteCell.querySelector('.note-text')?.textContent.trim() || '';
+        if (visible) return visible;
+        return noteCell.querySelector('.note-input')?.value.trim() || '';
+    }
+
+    function attachPrintMirrorsToRow(tr) {
+        const mirrors = [];
+        const hidden = [];
+        const push = (cell, text) => {
+            const span = attachPrintMirror(cell, text, hidden);
+            if (span) mirrors.push(span);
+        };
+
+        push(tr.querySelector('.col-name'), tr.querySelector('.col-name input')?.value.trim() || '');
+        const nameSpan = tr.querySelector('.col-name .print-cell-text');
+        if (nameSpan) nameSpan.classList.add('print-name-text');
+        push(tr.querySelector('.col-dates'), patientDatesPrintText(tr));
+        push(tr.querySelector('.col-num'), tr.querySelector('.sessions')?.value.trim() || '0');
+
+        const cancelCells = tr.querySelectorAll('.cancel-cell');
+        if (cancelCells[0]) push(cancelCells[0], patientCancelPaidPrintText(tr));
+        if (cancelCells[1]) push(cancelCells[1], patientCancelUnpaidPrintText(tr));
+
+        const paidMark = tr.querySelector('.paid-mark');
+        if (paidMark) push(paidMark.closest('td'), paidMark.checked ? 'כן' : '—');
+
+        push(tr.querySelector('.col-note'), patientNotePrintText(tr));
+
+        return { mirrors, hidden };
+    }
+
+    function beginPrintView() {
+        if (printViewState) return;
+        calculate();
+        const payFilterSelect = document.getElementById('patientPayFilter');
+        printViewState = {
+            payFilter: getPatientPayFilterValue(),
+            payFilterSelect,
+            rowMirrors: []
+        };
+        if (payFilterSelect) payFilterSelect.value = 'all';
+        applyPatientTableFilter('all');
+        document.body.classList.add('print-view-active');
+        getAllPatientTableRows().forEach((tr) => {
+            printViewState.rowMirrors.push(attachPrintMirrorsToRow(tr));
+        });
+    }
+
+    function endPrintView() {
+        if (!printViewState) return;
+        printViewState.rowMirrors.forEach((entry) => {
+            entry.mirrors.forEach((span) => span.remove());
+            entry.hidden.forEach((el) => el.classList.remove('print-hide-field'));
+        });
+        if (printViewState.payFilterSelect) {
+            printViewState.payFilterSelect.value = printViewState.payFilter;
+        }
+        applyPatientTableFilter(printViewState.payFilter);
+        document.body.classList.remove('print-view-active');
+        printViewState = null;
+    }
+
+    function exportPdf() {
+        calculate();
+        beginPrintView();
+        window.print();
+    }
+
     document.getElementById('exportExcel')?.addEventListener('click', exportExcel);
     document.getElementById('exportWord')?.addEventListener('click', exportWord);
-    document.getElementById('exportPdf').addEventListener('click', () => {
-        calculate();
-        window.print();
-    });
+    document.getElementById('exportPdf')?.addEventListener('click', exportPdf);
+    window.addEventListener('beforeprint', beginPrintView);
+    window.addEventListener('afterprint', endPrintView);
     document.getElementById('exportJson').addEventListener('click', exportJsonBackup);
     document.getElementById('newMonthFromTemplateBtn').addEventListener('click', createNextMonthReportFromTemplate);
 

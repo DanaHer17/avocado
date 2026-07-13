@@ -1221,14 +1221,78 @@
             padding: 0.2rem;
         }
         @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0.7cm;
+            }
             body { background: #fff; padding: 0.5cm; }
+            body.print-view-active .subtitle { display: none !important; }
+            .wrap { max-width: none; width: 100%; }
             .no-print { display: none !important; }
             .no-print-col { display: none !important; }
             .scroll-x { overflow: visible !important; }
-            table { min-width: 0 !important; font-size: 10pt; }
+            table { min-width: 0 !important; }
+            .print-patient-card {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+                padding: 0.35rem 0.45rem;
+            }
+            #patientTable {
+                width: 100%;
+                table-layout: fixed;
+                font-size: 8.5pt;
+            }
+            #patientTable th,
+            #patientTable td {
+                white-space: normal;
+                word-wrap: break-word;
+                overflow: visible;
+                vertical-align: top;
+                padding: 0.28rem 0.22rem;
+            }
+            #patientTable .col-name {
+                width: 13%;
+                text-align: right;
+            }
+            #patientTable .col-dates {
+                width: 24%;
+                min-width: 0;
+                max-width: none;
+                text-align: right;
+            }
+            #patientTable .cancel-cell {
+                width: 11%;
+                min-width: 0;
+                text-align: right;
+            }
+            #patientTable .col-note {
+                width: 10%;
+                text-align: right;
+            }
+            .print-cell-text {
+                display: block !important;
+                white-space: normal !important;
+                word-break: break-word;
+                line-height: 1.35;
+                color: #000;
+            }
+            .print-cell-text.print-name-text,
+            #patientTable .col-name .print-cell-text {
+                font-weight: 700;
+                font-size: 9pt;
+            }
+            .print-hide-field {
+                display: none !important;
+            }
+            #patientTable tbody tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
             .card {
                 box-shadow: none;
                 border: 1px solid #ccc;
+            }
+            .card:not(.print-patient-card) {
                 break-inside: avoid;
                 page-break-inside: avoid;
             }
