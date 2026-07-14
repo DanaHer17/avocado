@@ -138,13 +138,20 @@
         return meetingBonusInput?.checked ? 5 : 0;
     }
 
+    function withMeetingBonus(amount) {
+        return Math.max(0, parseFloat(amount) || 0) + meetingBonusAmount();
+    }
+
+    function baseTherapistRate() {
+        return Math.max(0, parseFloat(baseSalaryInput?.value) || 0);
+    }
+
     function effectiveRate() {
-        const base = parseFloat(baseSalaryInput?.value) || 0;
-        return base + meetingBonusAmount();
+        return withMeetingBonus(baseTherapistRate());
     }
 
     function therapistPayForSessionType(st, fallbackTherapistRate) {
-        if (st) return Math.max(0, parseFloat(st.therapistPrice) || 0) + meetingBonusAmount();
+        if (st) return withMeetingBonus(st.therapistPrice);
         return fallbackTherapistRate;
     }
 
@@ -1906,7 +1913,7 @@ ${d.fullName || '—'}
         const parentMeetingsTotal = extras.parentMeetingsEnabled
             ? extras.parentMeetings
                 .filter((x) => x.child || x.date)
-                .reduce((sum, x) => sum + parentMeetingTherapistAmount(x, rate), 0)
+                .reduce((sum, x) => sum + parentMeetingTherapistAmount(x, baseTherapistRate()), 0)
             : 0;
         const languageEvalTherapistTotal = extras.languageEvaluationsEnabled
             ? extras.languageEvaluations.reduce((sum, x) => sum + toAmount(x.therapist, 305), 0)
@@ -2357,7 +2364,7 @@ ${d.fullName || '—'}
                     x.child,
                     x.date,
                     parentMeetingDurationLabel(x.duration),
-                    parentMeetingTherapistAmount(x, sum.rate)
+                    parentMeetingTherapistAmount(x, baseTherapistRate())
                 ]);
             });
         }
