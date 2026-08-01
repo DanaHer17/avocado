@@ -103,6 +103,7 @@
     const summaryEls = {
         effectiveRate: document.getElementById('effectiveRate'),
         totalBillable: document.getElementById('totalBillable'),
+        totalPaidCancels: document.getElementById('totalPaidCancels'),
         totalUnpaidCancels: document.getElementById('totalUnpaidCancels'),
         individualTotal: document.getElementById('individualTotal'),
         groupTotal: document.getElementById('groupTotal'),
@@ -1311,6 +1312,43 @@
         return parts.join(' + ');
     }
 
+    function paidCancelAmountFromEntry(entry, clientRate) {
+        if (!entry || !entry.date) return 0;
+        if (entry.mode === 'custom') return Math.max(0, parseFloat(entry.amount) || 0);
+        return Math.max(0, parseFloat(clientRate) || 0);
+    }
+
+    /**
+     * ביטול מלא = כמו מפגש לתקורה (שכר בסיס+בונוס למטפלת, יתרה למרכז).
+     * ביטול חלקי (אחר) = כל הסכום לצד המסומן בשורה (מטפלת / מרכז).
+     */
+    function paidCancelShareFromEntry(entry, clientRate, therapistRate, paidToTherapist) {
+        if (!entry || !entry.date) {
+            return { gross: 0, therapist: 0, center: 0 };
+        }
+        if (entry.mode === 'custom') {
+            const amount = Math.max(0, parseFloat(entry.amount) || 0);
+            if (paidToTherapist) {
+                return { gross: amount, therapist: amount, center: 0 };
+            }
+            return { gross: amount, therapist: 0, center: amount };
+        }
+        const gross = Math.max(0, parseFloat(clientRate) || 0);
+        const therapist = Math.min(gross, Math.max(0, parseFloat(therapistRate) || 0));
+        return {
+            gross,
+            therapist,
+            center: Math.max(0, gross - therapist)
+        };
+    }
+
+    function rowPaidCancelAmount(rd, clientRate) {
+        return (rd.cancelPaidEntries || []).reduce(
+            (acc, x) => acc + paidCancelAmountFromEntry(x, clientRate),
+            0
+        );
+    }
+
     function rowBillingParts(rd) {
         const clientRate = parseFloat(clientRateInput?.value) || 0;
         const role = activeRole();
@@ -1322,19 +1360,21 @@
         });
         const paidCancelCount = (rd.cancelPaidEntries || []).filter((x) => x && x.date).length;
         const chargedSessions = sessionsPart.chargedMeetings != null ? sessionsPart.chargedMeetings : sessionsPart.meetings;
-        const billableMeetings = chargedSessions + paidCancelCount;
-        const rowTotal = sessionsPart.gross + (rd.cancelPaidEntries || []).reduce((acc, x) => {
-            if (!x || !x.date) return acc;
-            const amount = x.mode === 'custom' ? (parseFloat(x.amount) || 0) : clientRate;
-            return acc + Math.max(0, amount);
-        }, 0);
-        return { billableMeetings, rowTotal };
+        const rowTotal = sessionsPart.gross + rowPaidCancelAmount(rd, clientRate);
+        return {
+            billableMeetings: chargedSessions,
+            paidCancelCount,
+            rowTotal
+        };
     }
 
-    function buildTherapistWhatsappText(meetings, amount, therapistPaymentDetails) {
+    function buildTherapistWhatsappText(meetings, amount, therapistPaymentDetails, paidCancelCount) {
         const d = therapistPaymentDetails || collectTherapistPaymentDetails();
+        const cancelPart = paidCancelCount > 0
+            ? `\n(+ ${paidCancelCount} ביטול בתשלום)`
+            : '';
         return `היי!
-החודש התקיימו ${meetings} מפגשים עליהם יש להעביר סכום של ${amount} ש"ח ל
+החודש התקיימו ${meetings} מפגשים${cancelPart} עליהם יש להעביר סכום של ${amount} ש"ח ל
 ${d.fullName || '—'}
 בנק ${d.bankName || '—'}
 סניף ${d.branchNumber || '—'}
@@ -1342,9 +1382,12 @@ ${d.fullName || '—'}
 ניתן לשלם גם בביט/פייבוקס`;
     }
 
-    function buildCenterWhatsappText(meetings, amount) {
+    function buildCenterWhatsappText(meetings, amount, paidCancelCount) {
+        const cancelPart = paidCancelCount > 0
+            ? `\n(+ ${paidCancelCount} ביטול בתשלום)`
+            : '';
         return `היי!
-החודש התקיימו ${meetings} מפגשים
+החודש התקיימו ${meetings} מפגשים${cancelPart}
 עליהם יש להעביר סכום של ${amount} ש"ח
 ל - "אבוקדו - מרכז התפתחותי לילדים בע"מ"
 בנק לאומי 10
@@ -1363,10 +1406,15 @@ ${d.fullName || '—'}
         const parts = rowBillingParts(rd);
         const meetings = parts.billableMeetings.toLocaleString('he-IL');
         const transferAmount = parts.rowTotal.toLocaleString('he-IL');
+        const cancelCount = parts.paidCancelCount || 0;
         const therapistPaymentDetails = collectTherapistPaymentDetails();
         const blocks = [];
-        if (paidToTherapist) blocks.push(buildTherapistWhatsappText(meetings, transferAmount, therapistPaymentDetails));
-        if (paidToCenter) blocks.push(buildCenterWhatsappText(meetings, transferAmount));
+        if (paidToTherapist) {
+            blocks.push(buildTherapistWhatsappText(meetings, transferAmount, therapistPaymentDetails, cancelCount));
+        }
+        if (paidToCenter) {
+            blocks.push(buildCenterWhatsappText(meetings, transferAmount, cancelCount));
+        }
         const patientName = rd.name || 'ללא שם';
         paymentMsgTitle.textContent = `הודעה לוואטסאפ - ${patientName}`;
         paymentMsgText.value = blocks.join('\n\n--------------------\n\n');
@@ -1788,7 +1836,14 @@ ${d.fullName || '—'}
         let totalBillable = 0;
         let totalSessions = 0;
         let totalUnpaid = 0;
+        let totalPaidCancels = 0;
         let totalCancellationPaidAmount = 0;
+        let paidCancelTherapistTotal = 0;
+        let paidCancelCenterTotal = 0;
+        let paidCancelTherapistCount = 0;
+        let paidCancelCenterCount = 0;
+        let sessionTherapistTotal = 0;
+        let sessionGrossTotal = 0;
         let grossIndividualTotal = 0;
         let individualTotal = 0;
         let paidToCenterTotal = 0;
@@ -1815,50 +1870,63 @@ ${d.fullName || '—'}
                 .map((slot) => {
                     const mode = slot.querySelector('.cancel-paid-mode')?.value === 'custom' ? 'custom' : 'full';
                     const date = slot.querySelector('.cancel-paid-date')?.value.trim() || '';
-                    const amount = mode === 'custom'
-                        ? Math.max(0, parseFloat(slot.querySelector('.cancel-amount')?.value) || 0)
-                        : clientRate;
-                    return { date, amount };
+                    if (!date) return null;
+                    return {
+                        date,
+                        mode,
+                        amount: mode === 'custom'
+                            ? Math.max(0, parseFloat(slot.querySelector('.cancel-amount')?.value) || 0)
+                            : 0
+                    };
                 })
-                .filter((x) => x.date);
+                .filter(Boolean);
             const unpaidCancelDates = Array.from(tr.querySelectorAll('.cancel-unpaid-list .cancel-unpaid-date'))
                 .map((i) => i.value.trim())
                 .filter(Boolean);
-            const cancelPaidCount = paidCancelEntries.length;
-            const cancelPaidAmount = paidCancelEntries.reduce((sum, x) => sum + x.amount, 0);
             const cancelUnpaid = unpaidCancelDates.length;
             const paidToCenter = !!tr.querySelector('.paid-center')?.checked;
             const paidToTherapist = !!tr.querySelector('.paid-therapist')?.checked;
-            const billable = sessionsPart.meetings + cancelPaidCount;
-            const therapistShare = sessionsPart.therapist + (cancelPaidCount * rate);
-            const grossRow = sessionsPart.gross + cancelPaidAmount;
-            const centerShare = Math.max(0, grossRow - therapistShare);
-            if (cancelPaidCount > 0) {
-                bumpSessionTypeBucket(
-                    sessionTypeBuckets,
-                    '_cancel',
-                    'ביטול בתשלום',
-                    cancelPaidAmount,
-                    cancelPaidCount * rate,
-                    cancelPaidCount
-                );
-            }
+            // מלא = כמו מפגש (שכר בסיס+יתרה). אחר = כל הסכום לפי הסימון. לא נספר כמפגש.
+            let cancelPaidAmount = 0;
+            let cancelToTherapist = 0;
+            let cancelToCenter = 0;
+            let cancelPaidCount = 0;
+            paidCancelEntries.forEach((entry) => {
+                const share = paidCancelShareFromEntry(entry, clientRate, rate, paidToTherapist);
+                cancelPaidCount += 1;
+                cancelPaidAmount += share.gross;
+                cancelToTherapist += share.therapist;
+                cancelToCenter += share.center;
+                if (share.therapist > 0) paidCancelTherapistCount += 1;
+                if (share.center > 0) paidCancelCenterCount += 1;
+            });
+            const sessionTherapist = sessionsPart.therapist;
+            const sessionGross = sessionsPart.gross;
+            const sessionCenterShare = Math.max(0, sessionGross - sessionTherapist);
+            const therapistShare = sessionTherapist + cancelToTherapist;
+            const centerShare = sessionCenterShare + cancelToCenter;
+            const grossRow = sessionGross + cancelPaidAmount;
             totalSessions += sessionsPart.meetings;
-            totalBillable += billable;
+            totalBillable += sessionsPart.meetings;
             totalUnpaid += cancelUnpaid;
+            totalPaidCancels += cancelPaidCount;
             totalCancellationPaidAmount += cancelPaidAmount;
+            paidCancelTherapistTotal += cancelToTherapist;
+            paidCancelCenterTotal += cancelToCenter;
+            sessionTherapistTotal += sessionTherapist;
+            sessionGrossTotal += sessionGross;
             individualTotal += therapistShare;
             grossIndividualTotal += grossRow;
             if (paidToCenter) {
                 paidToCenterTotal += grossRow;
                 paidToCenterApplied += centerShare;
-                paidToCenterTreatmentCount += billable;
+                paidToCenterTreatmentCount += sessionsPart.meetings;
                 paidDirectBreakdown.center.push({ label: patientLabel, amount: centerShare, gross: grossRow });
             }
             if (paidToTherapist) {
                 paidToTherapistTotal += grossRow;
                 paidToTherapistApplied += therapistShare;
-                paidToTherapistTreatmentCount += billable;
+                paidToTherapistTreatmentCount += sessionsPart.meetings;
                 paidDirectBreakdown.therapist.push({ label: patientLabel, amount: therapistShare, gross: grossRow });
             }
         });
@@ -1961,7 +2029,7 @@ ${d.fullName || '—'}
         const remainingToCenter = Math.max(0, centerTotal - paidToCenterApplied);
         const remainingToTherapist = Math.max(0, grandTotal - paidToTherapistApplied);
         const netSettlement = remainingToTherapist - remainingToCenter;
-        const individualCenterShare = Math.max(0, grossIndividualTotal - individualTotal);
+        const individualCenterShare = Math.max(0, sessionGrossTotal - sessionTherapistTotal);
         const sessionTypeOrder = collectSessionTypes().map((st) => st.id);
         const sessionTypeBreakdown = [];
         sessionTypeOrder.forEach((id) => {
@@ -1983,8 +2051,14 @@ ${d.fullName || '—'}
                     });
                 }
             });
-        } else if (individualTotal > 0) {
-            therapistEntitlement.push({ label: 'מפגשים פרטניים', amount: individualTotal });
+        } else if (sessionTherapistTotal > 0) {
+            therapistEntitlement.push({ label: 'מפגשים פרטניים', amount: sessionTherapistTotal });
+        }
+        if (paidCancelTherapistTotal > 0) {
+            therapistEntitlement.push({
+                label: formatSessionTypeEntitlementLabel('ביטול בתשלום', paidCancelTherapistCount),
+                amount: paidCancelTherapistTotal
+            });
         }
         if (groupTotal > 0) therapistEntitlement.push({ label: 'קבוצה', amount: groupTotal });
         if (parentMeetingsTotal > 0) therapistEntitlement.push({ label: 'פגישות הורים', amount: parentMeetingsTotal });
@@ -2017,6 +2091,12 @@ ${d.fullName || '—'}
         } else if (individualCenterShare > 0) {
             centerEntitlement.push({ label: 'חלק מרכז מטיפולים פרטניים', amount: individualCenterShare });
         }
+        if (paidCancelCenterTotal > 0) {
+            centerEntitlement.push({
+                label: formatSessionTypeEntitlementLabel('ביטול בתשלום', paidCancelCenterCount),
+                amount: paidCancelCenterTotal
+            });
+        }
         if (languageEvalCenterTotal > 0) centerEntitlement.push({ label: 'הערכות שפה', amount: languageEvalCenterTotal });
         if (diagnosticsCenterTotal > 0) centerEntitlement.push({ label: 'אבחונים', amount: diagnosticsCenterTotal });
         if (courseExpensesTotal > 0) centerEntitlement.push({ label: 'הוצאות קורסים (75%)', amount: courseExpensesTotal });
@@ -2032,6 +2112,10 @@ ${d.fullName || '—'}
             clientRate,
             totalBillable,
             totalUnpaid,
+            totalPaidCancels,
+            totalCancellationPaidAmount,
+            paidCancelTherapistTotal,
+            paidCancelCenterTotal,
             individualTotal,
             groupTotal,
             parentMeetingsTotal,
@@ -2302,7 +2386,12 @@ ${d.fullName || '—'}
         });
         aoa.push([]);
         aoa.push(['סה״כ מפגשים לחישוב', sum.totalBillable]);
+        aoa.push(['סה״כ ביטולים בתשלום', sum.totalPaidCancels || 0]);
         aoa.push(['סה״כ ביטולים ללא תשלום', sum.totalUnpaid]);
+        if ((sum.paidCancelTherapistTotal || 0) > 0 || (sum.paidCancelCenterTotal || 0) > 0) {
+            aoa.push(['ביטול בתשלום למטפלת (₪)', sum.paidCancelTherapistTotal || 0]);
+            aoa.push(['ביטול בתשלום למרכז (₪)', sum.paidCancelCenterTotal || 0]);
+        }
         aoa.push(['שכר מטפלת מטיפולים פרטניים (₪)', sum.individualTotal]);
         aoa.push(['סה״כ הכנסה פרטנית (₪)', sum.grossIndividualTotal]);
         if (sum.hasTypedSessionBreakdown && Array.isArray(sum.sessionTypeBreakdown) && sum.sessionTypeBreakdown.length) {
@@ -2497,6 +2586,7 @@ ${d.fullName || '—'}
             routingBlock +
             `<p><strong>תעריפים למטפלת (כולל בונוס ישיבה):</strong> ${escapeHtml(formatEffectiveRatesExportText(sum.effectiveTherapistRates))}<br>` +
             `<strong>סה״כ מפגשים לחישוב:</strong> ${sum.totalBillable}<br>` +
+            `<strong>סה״כ ביטולים בתשלום:</strong> ${sum.totalPaidCancels || 0}<br>` +
             `<strong>סה״כ ביטולים ללא תשלום:</strong> ${sum.totalUnpaid}<br>` +
             `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
             `<strong>סה״כ הכנסה פרטנית:</strong> ${sum.grossIndividualTotal} ₪<br>` +
@@ -2934,7 +3024,7 @@ ${d.fullName || '—'}
             <td class="cancel-cell">
                 <div class="cancel-row-list cancel-paid-list">${cancelPaidHtml}</div>
                 <button type="button" class="btn-mini add-cancel-paid-btn">+ ביטול בתשלום</button>
-                <div class="cancel-note">מלא = מחיר טיפול פרטני מלא, אחר = סכום ידני.</div>
+                <div class="cancel-note">מלא = כמו מפגש לתקורה (שכר בסיס + יתרה למרכז). אחר = סכום ידני כולו למרכז/מטפלת לפי הסימון. לא נספר כמפגש.</div>
             </td>
             <td class="cancel-cell">
                 <div class="cancel-row-list cancel-unpaid-list">${cancelUnpaidHtml}</div>
@@ -3162,6 +3252,9 @@ ${d.fullName || '—'}
             els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
         }
         els.totalBillable.textContent = sum.totalBillable.toLocaleString('he-IL');
+        if (els.totalPaidCancels) {
+            els.totalPaidCancels.textContent = (sum.totalPaidCancels || 0).toLocaleString('he-IL');
+        }
         els.totalUnpaidCancels.textContent = sum.totalUnpaid.toLocaleString('he-IL');
         els.individualTotal.textContent = sum.individualTotal.toLocaleString('he-IL');
         els.groupTotal.textContent = sum.groupTotal.toLocaleString('he-IL');

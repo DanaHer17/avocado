@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260625">
+    <link rel="stylesheet" href="styles.css?v=20260627">
 </head>
 <body>
 <div class="wrap">
@@ -362,8 +362,10 @@
                         <ul id="effectiveRatesDetail" class="summary-item-list"></ul>
                     </div>
                 </div>
-                <dt>סה״כ מפגשים לחישוב (מפגשים + ביטולים בתשלום)</dt>
+                <dt>סה״כ מפגשים לחישוב</dt>
                 <dd id="totalBillable">0</dd>
+                <dt>סה״כ ביטולים בתשלום</dt>
+                <dd id="totalPaidCancels">0</dd>
                 <dt>סה״כ ביטולים ללא תשלום (תיעוד)</dt>
                 <dd id="totalUnpaidCancels">0</dd>
                 <dt>שכר מטפלת מטיפולים פרטניים</dt>
@@ -458,7 +460,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260625"></script>
+<script src="app.js?v=20260627"></script>
 
 </body>
 </html>
