@@ -1254,6 +1254,24 @@
         return name;
     }
 
+    function sessionMeetingCountBuckets(sum) {
+        if (!sum || !sum.hasTypedSessionBreakdown || !Array.isArray(sum.sessionTypeBreakdown)) return [];
+        return sum.sessionTypeBreakdown.filter((b) =>
+            b && b.key !== '_cancel' && (b.meetings || 0) > 0
+        );
+    }
+
+    /** כשיש יותר מסוג מפגש אחד — שורות כמו "8 מפגש רגיל"; אחרת רק המספר הכולל. */
+    function formatTotalBillableSummary(sum) {
+        const buckets = sessionMeetingCountBuckets(sum);
+        if (buckets.length > 1) {
+            return buckets
+                .map((b) => `${(b.meetings || 0).toLocaleString('he-IL')} ${String(b.label || '').trim() || 'סוג מפגש'}`)
+                .join('\n');
+        }
+        return (sum.totalBillable || 0).toLocaleString('he-IL');
+    }
+
     function sessionBreakdownFromRow(rd, opts) {
         const options = opts || {};
         const role = options.role || activeRole();
@@ -2386,6 +2404,12 @@ ${d.fullName || '—'}
         });
         aoa.push([]);
         aoa.push(['סה״כ מפגשים לחישוב', sum.totalBillable]);
+        const meetingBuckets = sessionMeetingCountBuckets(sum);
+        if (meetingBuckets.length > 1) {
+            meetingBuckets.forEach((b) => {
+                aoa.push([String(b.label || '').trim() || 'סוג מפגש', b.meetings || 0]);
+            });
+        }
         aoa.push(['סה״כ ביטולים בתשלום', sum.totalPaidCancels || 0]);
         aoa.push(['סה״כ ביטולים ללא תשלום', sum.totalUnpaid]);
         if ((sum.paidCancelTherapistTotal || 0) > 0 || (sum.paidCancelCenterTotal || 0) > 0) {
@@ -2585,7 +2609,7 @@ ${d.fullName || '—'}
             `<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">${tableRows}</table>` +
             routingBlock +
             `<p><strong>תעריפים למטפלת (כולל בונוס ישיבה):</strong> ${escapeHtml(formatEffectiveRatesExportText(sum.effectiveTherapistRates))}<br>` +
-            `<strong>סה״כ מפגשים לחישוב:</strong> ${sum.totalBillable}<br>` +
+            `<strong>סה״כ מפגשים לחישוב:</strong> ${escapeHtml(formatTotalBillableSummary(sum)).replace(/\n/g, '<br>')}<br>` +
             `<strong>סה״כ ביטולים בתשלום:</strong> ${sum.totalPaidCancels || 0}<br>` +
             `<strong>סה״כ ביטולים ללא תשלום:</strong> ${sum.totalUnpaid}<br>` +
             `<strong>סה״כ פרטני:</strong> ${sum.individualTotal} ₪<br>` +
@@ -2897,16 +2921,32 @@ ${d.fullName || '—'}
         return entries;
     }
 
+    function sessionTypeLabelForEntry(entry, role, stMap) {
+        if (role === ROLE_SPEECH) return '';
+        const typeId = String((entry && entry.sessionTypeId) == null ? '' : entry.sessionTypeId).trim();
+        if (!typeId) return '';
+        const st = stMap && stMap[typeId];
+        return st ? String(st.name || '').trim() : '';
+    }
+
+    function formatSessionEntryDetail(dateText, typeLabel, chargeText) {
+        const extras = [];
+        if (typeLabel) extras.push(typeLabel);
+        if (chargeText) extras.push(chargeText);
+        if (!extras.length) return dateText;
+        return `${dateText} (${extras.join(', ')})`;
+    }
+
     function formatSessionEntriesForExport(entries, clientRate, role, stMap) {
         return (entries || [])
             .filter((e) => e && e.date)
             .map((e) => {
+                const typeLabel = sessionTypeLabelForEntry(e, role, stMap);
                 const charge = clientChargeForSession(e, role, clientRate, stMap);
                 const defaultCharge = defaultClientChargeForSession(e, role, clientRate, stMap);
-                if (e.clientCharge != null && e.clientCharge !== '' && charge !== defaultCharge) {
-                    return `${e.date} (${charge}₪)`;
-                }
-                return e.date;
+                const hasCustomCharge = e.clientCharge != null && e.clientCharge !== '' && charge !== defaultCharge;
+                const chargeText = hasCustomCharge ? `${charge}₪` : '';
+                return formatSessionEntryDetail(e.date, typeLabel, chargeText);
             })
             .join(', ');
     }
@@ -3251,7 +3291,7 @@ ${d.fullName || '—'}
         if (els.remainingToCenter) {
             els.remainingToCenter.textContent = sum.remainingToCenter.toLocaleString('he-IL');
         }
-        els.totalBillable.textContent = sum.totalBillable.toLocaleString('he-IL');
+        els.totalBillable.textContent = formatTotalBillableSummary(sum);
         if (els.totalPaidCancels) {
             els.totalPaidCancels.textContent = (sum.totalPaidCancels || 0).toLocaleString('he-IL');
         }
@@ -3624,12 +3664,17 @@ ${d.fullName || '—'}
     }
 
     function patientDatesPrintText(tr) {
+        const role = activeRole();
+        const stMap = sessionTypeMapFrom(collectSessionTypes());
         const parts = [];
         tr.querySelectorAll('.date-slot').forEach((slot) => {
             const date = formatPrintDateValue(slot.querySelector('.sess-date, .sess-date-legacy')?.value);
             if (!date) return;
+            const typeId = slot.querySelector('.sess-type-select')?.value || '';
+            const typeLabel = sessionTypeLabelForEntry({ sessionTypeId: typeId }, role, stMap);
             const charge = slot.querySelector('.sess-client-charge')?.value.trim() || '';
-            parts.push(charge ? `${date} (${charge} ₪)` : date);
+            const chargeText = charge ? `${charge} ₪` : '';
+            parts.push(formatSessionEntryDetail(date, typeLabel, chargeText));
         });
         return parts.join(' · ');
     }

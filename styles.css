@@ -852,6 +852,7 @@
         }
         .summary dt { color: rgba(236,253,245,.75); }
         .summary dd { margin: 0; font-weight: 600; }
+        #totalBillable { white-space: pre-line; }
         .summary dl > .summary-settlement-block {
             grid-column: 1 / -1;
             display: grid;
