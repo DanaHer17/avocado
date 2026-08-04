@@ -688,6 +688,36 @@
         return withMeetingBonus(rate);
     }
 
+    function isParentMeetingFullDuration(meeting) {
+        return normalizeParentMeetingDuration(meeting && meeting.duration) !== PARENT_MEETING_HALF_MINUTES;
+    }
+
+    function parentMeetingsForSummary(list) {
+        const items = Array.isArray(list) ? list.filter((x) => x && (x.child || x.date)) : [];
+        let fullCount = 0;
+        let halfCount = 0;
+        let fullAmount = 0;
+        let halfAmount = 0;
+        const rate = baseTherapistRate();
+        items.forEach((x) => {
+            const amount = parentMeetingTherapistAmount(x, rate);
+            if (isParentMeetingFullDuration(x)) {
+                fullCount += 1;
+                fullAmount += amount;
+            } else {
+                halfCount += 1;
+                halfAmount += amount;
+            }
+        });
+        return {
+            fullCount,
+            halfCount,
+            fullAmount,
+            halfAmount,
+            total: fullAmount + halfAmount
+        };
+    }
+
     function wireMiniRowInputs(tr) {
         tr.querySelectorAll('input, select').forEach((inp) => {
             if (inp.classList.contains('mini-paid-center') || inp.classList.contains('mini-paid-therapist')) return;
@@ -1262,14 +1292,27 @@
         );
     }
 
-    /** כשיש יותר מסוג מפגש אחד — שורות כמו "8 מפגש רגיל"; אחרת רק המספר הכולל. */
+    /** כשיש יותר מסוג מפגש אחד / פגישות הורים 45 דק׳ — שורות פירוט; אחרת רק המספר הכולל. */
     function formatTotalBillableSummary(sum) {
         const buckets = sessionMeetingCountBuckets(sum);
+        const parentFull = sum.parentMeetingsFullCount || 0;
+        const sessionMeetings = Math.max(0, (sum.totalBillable || 0) - parentFull);
+        const lines = [];
         if (buckets.length > 1) {
-            return buckets
-                .map((b) => `${(b.meetings || 0).toLocaleString('he-IL')} ${String(b.label || '').trim() || 'סוג מפגש'}`)
-                .join('\n');
+            buckets.forEach((b) => {
+                lines.push(`${(b.meetings || 0).toLocaleString('he-IL')} ${String(b.label || '').trim() || 'סוג מפגש'}`);
+            });
+        } else if (sessionMeetings > 0 && (parentFull > 0 || buckets.length > 1)) {
+            if (buckets.length === 1) {
+                lines.push(`${(buckets[0].meetings || 0).toLocaleString('he-IL')} ${String(buckets[0].label || '').trim() || 'סוג מפגש'}`);
+            } else {
+                lines.push(sessionMeetings.toLocaleString('he-IL'));
+            }
         }
+        if (parentFull > 0) {
+            lines.push(`${parentFull.toLocaleString('he-IL')} פגישות הורים`);
+        }
+        if (lines.length > 1) return lines.join('\n');
         return (sum.totalBillable || 0).toLocaleString('he-IL');
     }
 
@@ -1997,11 +2040,13 @@ ${d.fullName || '—'}
         const groupTotal = g.enabled
             ? g.groups.reduce((sum, gr) => sum + gr.rate * gr.sessions, 0)
             : 0;
-        const parentMeetingsTotal = extras.parentMeetingsEnabled
-            ? extras.parentMeetings
-                .filter((x) => x.child || x.date)
-                .reduce((sum, x) => sum + parentMeetingTherapistAmount(x, baseTherapistRate()), 0)
-            : 0;
+        const parentMeetingsStats = extras.parentMeetingsEnabled
+            ? parentMeetingsForSummary(extras.parentMeetings)
+            : { fullCount: 0, halfCount: 0, fullAmount: 0, halfAmount: 0, total: 0 };
+        const parentMeetingsTotal = parentMeetingsStats.total;
+        const parentMeetingsFullCount = parentMeetingsStats.fullCount;
+        const parentMeetingsHalfCount = parentMeetingsStats.halfCount;
+        totalBillable += parentMeetingsFullCount;
         const languageEvalTherapistTotal = extras.languageEvaluationsEnabled
             ? extras.languageEvaluations.reduce((sum, x) => sum + toAmount(x.therapist, 305), 0)
             : 0;
@@ -2080,7 +2125,18 @@ ${d.fullName || '—'}
             });
         }
         if (groupTotal > 0) therapistEntitlement.push({ label: 'קבוצה', amount: groupTotal });
-        if (parentMeetingsTotal > 0) therapistEntitlement.push({ label: 'פגישות הורים', amount: parentMeetingsTotal });
+        if (parentMeetingsStats.fullAmount > 0) {
+            therapistEntitlement.push({
+                label: formatSessionTypeEntitlementLabel('פגישות הורים', parentMeetingsFullCount),
+                amount: parentMeetingsStats.fullAmount
+            });
+        }
+        if (parentMeetingsStats.halfAmount > 0) {
+            therapistEntitlement.push({
+                label: formatSessionTypeEntitlementLabel('פגישות הורים 30 דקות', parentMeetingsHalfCount),
+                amount: parentMeetingsStats.halfAmount
+            });
+        }
         if (languageEvalTherapistTotal > 0) therapistEntitlement.push({ label: 'הערכות שפה', amount: languageEvalTherapistTotal });
         if (diagnosticsTotal > 0) therapistEntitlement.push({ label: 'אבחונים', amount: diagnosticsTotal });
         if (groupAssessmentsTotal > 0) therapistEntitlement.push({ label: 'מפגשי הערכה לקבוצה', amount: groupAssessmentsTotal });
@@ -2138,6 +2194,8 @@ ${d.fullName || '—'}
             individualTotal,
             groupTotal,
             parentMeetingsTotal,
+            parentMeetingsFullCount,
+            parentMeetingsHalfCount,
             languageEvalTherapistTotal,
             languageEvalCenterTotal,
             diagnosticsTotal,
@@ -2410,6 +2468,12 @@ ${d.fullName || '—'}
             meetingBuckets.forEach((b) => {
                 aoa.push([String(b.label || '').trim() || 'סוג מפגש', b.meetings || 0]);
             });
+        }
+        if ((sum.parentMeetingsFullCount || 0) > 0) {
+            aoa.push(['מתוכם פגישות הורים 45 דקות (נספרות כמפגש)', sum.parentMeetingsFullCount]);
+        }
+        if ((sum.parentMeetingsHalfCount || 0) > 0) {
+            aoa.push(['פגישות הורים 30 דקות (לא נספרות כמפגש)', sum.parentMeetingsHalfCount]);
         }
         aoa.push(['סה״כ ביטולים בתשלום', sum.totalPaidCancels || 0]);
         aoa.push(['סה״כ ביטולים ללא תשלום', sum.totalUnpaid]);
