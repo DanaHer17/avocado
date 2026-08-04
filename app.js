@@ -682,9 +682,10 @@
     }
 
     function parentMeetingTherapistAmount(meeting, rate) {
-        return normalizeParentMeetingDuration(meeting && meeting.duration) === PARENT_MEETING_HALF_MINUTES
-            ? PARENT_MEETING_HALF_PRICE
-            : rate;
+        if (normalizeParentMeetingDuration(meeting && meeting.duration) === PARENT_MEETING_HALF_MINUTES) {
+            return withMeetingBonus(PARENT_MEETING_HALF_PRICE);
+        }
+        return withMeetingBonus(rate);
     }
 
     function wireMiniRowInputs(tr) {
