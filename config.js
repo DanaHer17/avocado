@@ -34,6 +34,9 @@ window.AVOCADO_CONFIG = {
         },
         diagnostics: {
             sessionCount: 3
+        },
+        clinicalSupervision: {
+            ratePerSession: 0
         }
     }
 };

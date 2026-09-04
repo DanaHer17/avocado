@@ -25,6 +25,8 @@
     const PARENT_MEETING_HALF_PRICE = PARENT_MEETING_DEFAULTS.halfHourPrice || 150;
     const DIAGNOSTIC_DEFAULTS = DEFAULTS.diagnostics || {};
     const DIAGNOSTIC_SESSION_COUNT = DIAGNOSTIC_DEFAULTS.sessionCount || 3;
+    const CLINICAL_SUPERVISION_DEFAULTS = DEFAULTS.clinicalSupervision || {};
+    const DEFAULT_CS_RATE = CLINICAL_SUPERVISION_DEFAULTS.ratePerSession || 0;
     /** מספר תאי תאריך בהתחלה לשורה חדשה (מוסיפים עוד עם «+ תאריך») */
     const INITIAL_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.initialDateSlots) || 1;
     const MAX_DATE_SLOTS = (CONFIG.ui && CONFIG.ui.maxDateSlots) || 31;
@@ -49,6 +51,10 @@
     const groupFields = document.getElementById('groupFields');
     const groupsListEl = document.getElementById('groupsList');
     const addGroupBtn = document.getElementById('addGroupBtn');
+    const clinicalSupervisionEnabledInput = document.getElementById('clinicalSupervisionEnabled');
+    const clinicalSupervisionFields = document.getElementById('clinicalSupervisionFields');
+    const clinicalSupervisionBody = document.getElementById('clinicalSupervisionBody');
+    const addClinicalSupervisionBtn = document.getElementById('addClinicalSupervision');
     const bulkDateDialog = document.getElementById('bulkDateDialog');
     const bulkDateTitle = document.getElementById('bulkDateTitle');
     const bulkDateGrid = document.getElementById('bulkDateGrid');
@@ -107,6 +113,7 @@
         totalUnpaidCancels: document.getElementById('totalUnpaidCancels'),
         individualTotal: document.getElementById('individualTotal'),
         groupTotal: document.getElementById('groupTotal'),
+        clinicalSupervisionTotal: document.getElementById('clinicalSupervisionTotal'),
         parentMeetingsTotal: document.getElementById('parentMeetingsTotal'),
         languageEvalTherapistTotal: document.getElementById('languageEvalTherapistTotal'),
         languageEvalCenterTotal: document.getElementById('languageEvalCenterTotal'),
@@ -615,6 +622,205 @@
                 schedulePersist();
             }
         });
+    }
+
+    function toggleClinicalSupervisionVisibility() {
+        clinicalSupervisionFields?.classList.toggle('is-hidden', !clinicalSupervisionEnabledInput?.checked);
+    }
+
+    function buildClinicalSupervisionDateSlotsHtml(dates) {
+        const normalized = Array.isArray(dates) && dates.length ? dates : [''];
+        return normalized
+            .map((d) => {
+                const v = String(d == null ? '' : d).trim();
+                const iso = isIsoDate(v);
+                const input = iso || v === ''
+                    ? `<input type="date" class="cs-date" value="${escapeAttr(iso ? v : '')}" />`
+                    : `<input type="text" class="cs-date cs-date-legacy" placeholder="למשל 4.2.26" value="${escapeAttr(v)}" inputmode="numeric" />`;
+                return `<span class="date-slot">${input}<button type="button" class="date-remove" title="הסר תאריך">×</button></span>`;
+            })
+            .join('');
+    }
+
+    function normalizeClinicalSupervisionEntry(raw) {
+        const d = raw && typeof raw === 'object' ? raw : {};
+        const dates = normalizeDatesArray(d.dates, d.sessions);
+        const rateRaw = d.ratePerSession;
+        return {
+            name: String(d.name || '').trim(),
+            dates,
+            ratePerSession: rateRaw == null || rateRaw === '' ? DEFAULT_CS_RATE : toAmount(rateRaw, DEFAULT_CS_RATE)
+        };
+    }
+
+    function clinicalSupervisionEntryTotal(entry) {
+        const e = normalizeClinicalSupervisionEntry(entry);
+        const meetings = (e.dates || []).filter(Boolean).length;
+        return meetings * Math.max(0, e.ratePerSession);
+    }
+
+    function clinicalSupervisionStats(entries) {
+        const list = Array.isArray(entries) ? entries : [];
+        let total = 0;
+        let meetings = 0;
+        const items = [];
+        list.forEach((raw) => {
+            const e = normalizeClinicalSupervisionEntry(raw);
+            const rowMeetings = (e.dates || []).filter(Boolean).length;
+            const amount = rowMeetings * Math.max(0, e.ratePerSession);
+            if (!e.name && !rowMeetings && !amount) return;
+            total += amount;
+            meetings += rowMeetings;
+            items.push({ ...e, meetings: rowMeetings, amount });
+        });
+        return { total, meetings, items };
+    }
+
+    function readClinicalSupervisionRow(tr) {
+        const dateList = tr.querySelector('.cs-date-list');
+        const dates = dateList
+            ? Array.from(dateList.querySelectorAll('input.cs-date, input.cs-date-legacy')).map((i) => i.value.trim())
+            : [''];
+        const rateRaw = tr.querySelector('.cs-rate')?.value.trim() || '';
+        return normalizeClinicalSupervisionEntry({
+            name: tr.querySelector('.cs-name')?.value.trim() || '',
+            dates,
+            ratePerSession: rateRaw === '' ? '' : rateRaw
+        });
+    }
+
+    function updateClinicalSupervisionRowTotal(tr) {
+        const entry = readClinicalSupervisionRow(tr);
+        const total = clinicalSupervisionEntryTotal(entry);
+        const meetings = (entry.dates || []).filter(Boolean).length;
+        const cell = tr.querySelector('.cs-row-total');
+        if (!cell) return;
+        if (!meetings && !total) {
+            cell.textContent = '—';
+            return;
+        }
+        cell.textContent = total > 0
+            ? `${total.toLocaleString('he-IL')} ₪ (${meetings} מפגשים)`
+            : `${meetings} מפגשים`;
+    }
+
+    function updateAllClinicalSupervisionRowTotals() {
+        clinicalSupervisionBody?.querySelectorAll('tr').forEach(updateClinicalSupervisionRowTotal);
+    }
+
+    function wireClinicalSupervisionRowInputs(tr) {
+        tr.querySelectorAll('.cs-name, .cs-rate, .cs-date, .cs-date-legacy').forEach((inp) => {
+            if (inp.dataset.csWired === '1') return;
+            inp.dataset.csWired = '1';
+            const onChange = () => {
+                updateClinicalSupervisionRowTotal(tr);
+                schedulePersist();
+            };
+            inp.addEventListener('input', onChange);
+            inp.addEventListener('change', onChange);
+        });
+        const del = tr.querySelector('.mini-del');
+        if (del && del.dataset.csWired !== '1') {
+            del.dataset.csWired = '1';
+            del.addEventListener('click', () => {
+                tr.remove();
+                schedulePersist();
+            });
+        }
+    }
+
+    function addClinicalSupervisionRow(data) {
+        const d = normalizeClinicalSupervisionEntry(data);
+        const tr = document.createElement('tr');
+        const rateVal = d.ratePerSession > 0 ? d.ratePerSession : '';
+        tr.innerHTML = `<td><input type="text" class="cs-name" value="${escapeAttr(d.name)}" placeholder="שם המודרכת" /></td>
+            <td class="col-cs-dates">
+                <div class="date-row-list cs-date-list">${buildClinicalSupervisionDateSlotsHtml(d.dates)}</div>
+                <button type="button" class="btn-mini add-cs-date-btn">+ תאריך</button>
+            </td>
+            <td><input type="number" class="cs-rate" min="0" step="1" value="${escapeAttr(rateVal)}" placeholder="₪" /></td>
+            <td class="cs-row-total">—</td>
+            <td><button type="button" class="btn btn-danger mini-del">מחק</button></td>`;
+        clinicalSupervisionBody.appendChild(tr);
+        updateClinicalSupervisionRowTotal(tr);
+        wireClinicalSupervisionRowInputs(tr);
+    }
+
+    function wireClinicalSupervisionListEvents() {
+        if (!clinicalSupervisionBody) return;
+        clinicalSupervisionBody.addEventListener('click', (e) => {
+            const tr = e.target.closest('tr');
+            if (!tr || !clinicalSupervisionBody.contains(tr)) return;
+            if (e.target.closest('.add-cs-date-btn')) {
+                const dateList = tr.querySelector('.cs-date-list');
+                if (!dateList || dateList.querySelectorAll('.date-slot').length >= MAX_DATE_SLOTS) return;
+                const wrap = document.createElement('span');
+                wrap.className = 'date-slot';
+                wrap.innerHTML = '<input type="date" class="cs-date" value="" /><button type="button" class="date-remove" title="הסר תאריך">×</button>';
+                dateList.appendChild(wrap);
+                wireClinicalSupervisionRowInputs(tr);
+                updateClinicalSupervisionRowTotal(tr);
+                schedulePersist();
+                wrap.querySelector('input')?.focus();
+                return;
+            }
+            const removeDateBtn = e.target.closest('.date-remove');
+            if (removeDateBtn) {
+                const slot = removeDateBtn.closest('.date-slot');
+                const dateList = tr.querySelector('.cs-date-list');
+                if (!slot || !dateList) return;
+                const slots = dateList.querySelectorAll('.date-slot');
+                if (slots.length <= 1) {
+                    const inp = slot.querySelector('input');
+                    if (inp) inp.value = '';
+                } else {
+                    slot.remove();
+                }
+                updateClinicalSupervisionRowTotal(tr);
+                schedulePersist();
+            }
+        });
+    }
+
+    function collectClinicalSupervisionState() {
+        const entries = clinicalSupervisionBody
+            ? Array.from(clinicalSupervisionBody.querySelectorAll('tr')).map(readClinicalSupervisionRow)
+            : [];
+        return {
+            enabled: !!clinicalSupervisionEnabledInput?.checked,
+            entries
+        };
+    }
+
+    function defaultClinicalSupervisionState() {
+        return { enabled: false, entries: [] };
+    }
+
+    function clinicalSupervisionForNewMonthFromCurrent() {
+        const cs = collectClinicalSupervisionState();
+        if (!cs.enabled) return defaultClinicalSupervisionState();
+        return {
+            enabled: true,
+            entries: cs.entries.map((e) => ({
+                name: e.name,
+                ratePerSession: e.ratePerSession,
+                dates: ['']
+            }))
+        };
+    }
+
+    function applyClinicalSupervisionState(raw) {
+        const normalized = raw && typeof raw === 'object' ? raw : defaultClinicalSupervisionState();
+        const entries = Array.isArray(normalized.entries) ? normalized.entries : [];
+        if (clinicalSupervisionEnabledInput) {
+            clinicalSupervisionEnabledInput.checked = normalized.enabled != null
+                ? !!normalized.enabled
+                : entries.length > 0;
+        }
+        toggleClinicalSupervisionVisibility();
+        if (!clinicalSupervisionBody) return;
+        clinicalSupervisionBody.innerHTML = '';
+        entries.forEach(addClinicalSupervisionRow);
     }
 
     function toggleExtraRoleVisibility() {
@@ -1710,6 +1916,7 @@ ${d.fullName || '—'}
             therapistPaymentDetails: collectTherapistPaymentDetails(),
             meetingBonus: meetingBonusInput?.checked,
             group: collectGroupState(),
+            clinicalSupervision: collectClinicalSupervisionState(),
             extras: collectExtrasState(),
             rows
         };
@@ -1726,6 +1933,7 @@ ${d.fullName || '—'}
         applyTherapistPaymentDetails(s.therapistPaymentDetails);
         meetingBonusInput.checked = !!s.meetingBonus;
         applyGroupState(s.group);
+        applyClinicalSupervisionState(s.clinicalSupervision);
         applyExtrasState(s.extras);
         clearPatientTableRows();
         const rows = Array.isArray(s.rows) && s.rows.length ? s.rows : [{}];
@@ -1993,6 +2201,7 @@ ${d.fullName || '—'}
             }
         });
         const g = collectGroupState();
+        const clinicalSupervision = collectClinicalSupervisionState();
         const extras = collectExtrasState();
         const payCounters = {
             paidToCenterTotal,
@@ -2040,6 +2249,10 @@ ${d.fullName || '—'}
         const groupTotal = g.enabled
             ? g.groups.reduce((sum, gr) => sum + gr.rate * gr.sessions, 0)
             : 0;
+        const clinicalSupervisionStatsResult = clinicalSupervision.enabled
+            ? clinicalSupervisionStats(clinicalSupervision.entries)
+            : { total: 0, meetings: 0, items: [] };
+        const clinicalSupervisionTotal = clinicalSupervisionStatsResult.total;
         const parentMeetingsStats = extras.parentMeetingsEnabled
             ? parentMeetingsForSummary(extras.parentMeetings)
             : { fullCount: 0, halfCount: 0, fullAmount: 0, halfAmount: 0, total: 0 };
@@ -2084,6 +2297,7 @@ ${d.fullName || '—'}
             + additionalExpensesTotal;
         const grandTotal = individualTotal
             + groupTotal
+            + clinicalSupervisionTotal
             + parentMeetingsTotal
             + languageEvalTherapistTotal
             + diagnosticsTotal
@@ -2125,6 +2339,17 @@ ${d.fullName || '—'}
             });
         }
         if (groupTotal > 0) therapistEntitlement.push({ label: 'קבוצה', amount: groupTotal });
+        clinicalSupervisionStatsResult.items.forEach((item) => {
+            if (item.amount > 0) {
+                therapistEntitlement.push({
+                    label: formatSessionTypeEntitlementLabel(
+                        item.name ? `הדרכה — ${item.name}` : 'הדרכה קלינאית',
+                        item.meetings
+                    ),
+                    amount: item.amount
+                });
+            }
+        });
         if (parentMeetingsStats.fullAmount > 0) {
             therapistEntitlement.push({
                 label: formatSessionTypeEntitlementLabel('פגישות הורים', parentMeetingsFullCount),
@@ -2193,6 +2418,8 @@ ${d.fullName || '—'}
             paidCancelCenterTotal,
             individualTotal,
             groupTotal,
+            clinicalSupervisionTotal,
+            clinicalSupervision,
             parentMeetingsTotal,
             parentMeetingsFullCount,
             parentMeetingsHalfCount,
@@ -2509,6 +2736,7 @@ ${d.fullName || '—'}
         aoa.push(['סכום גולמי ששולם ישירות למטפלת (₪)', sum.paidToTherapistTotal]);
         aoa.push(['מפגשי טיפול ששולמו ישירות למטפלת', sum.paidToTherapistTreatmentCount]);
         aoa.push(['פגישות הורים למטפלת (₪)', sum.parentMeetingsTotal]);
+        aoa.push(['הדרכה קלינאית למטפלת (₪)', sum.clinicalSupervisionTotal || 0]);
         aoa.push(['הערכות שפה למטפלת (₪)', sum.languageEvalTherapistTotal]);
         aoa.push(['הערכות שפה למרכז (₪)', sum.languageEvalCenterTotal]);
         aoa.push(['אבחונים למטפלת (₪)', sum.diagnosticsTotal]);
@@ -2531,6 +2759,24 @@ ${d.fullName || '—'}
             });
         }
         aoa.push(['סה״כ כל הקבוצות (₪)', sum.groupTotal]);
+        if (sum.clinicalSupervision && sum.clinicalSupervision.enabled && sum.clinicalSupervision.entries.length) {
+            aoa.push([]);
+            aoa.push(['הדרכה קלינאית']);
+            aoa.push(['שם המודרכת', 'תאריכי מפגשים', 'מפגשים', 'תשלום למפגש (₪)', 'סה״כ (₪)']);
+            sum.clinicalSupervision.entries.forEach((x) => {
+                const stats = normalizeClinicalSupervisionEntry(x);
+                const meetings = (stats.dates || []).filter(Boolean).length;
+                if (!stats.name && !meetings) return;
+                aoa.push([
+                    stats.name,
+                    (stats.dates || []).filter(Boolean).join(', '),
+                    meetings,
+                    stats.ratePerSession,
+                    clinicalSupervisionEntryTotal(stats)
+                ]);
+            });
+            aoa.push(['סה״כ הדרכה קלינאית (₪)', sum.clinicalSupervisionTotal || 0]);
+        }
 
         if (sum.extras.parentMeetingsEnabled && sum.extras.parentMeetings.length) {
             aoa.push([]);
@@ -2684,6 +2930,7 @@ ${d.fullName || '—'}
             `<strong>לתשלום אחרי קיזוז:</strong> ${sum.netSettlement > 0 ? `המרכז חייב למטפלת ${sum.netSettlement} ₪` : (sum.netSettlement < 0 ? `המטפלת חייבת למרכז ${Math.abs(sum.netSettlement)} ₪` : 'אין יתרה בין הצדדים')}<br>` +
             `<strong>חלק מטפלת ששולם ישירות (בקיזוז):</strong> ${sum.paidToTherapistApplied} ₪ &nbsp;|&nbsp; <strong>חלק מרכז ששולם ישירות (בקיזוז):</strong> ${sum.paidToCenterApplied} ₪<br>` +
             `<strong>פגישות הורים למטפלת:</strong> ${sum.parentMeetingsTotal} ₪<br>` +
+            `<strong>הדרכה קלינאית למטפלת:</strong> ${sum.clinicalSupervisionTotal || 0} ₪<br>` +
             `<strong>הערכות שפה למטפלת:</strong> ${sum.languageEvalTherapistTotal} ₪ &nbsp;|&nbsp; <strong>למרכז:</strong> ${sum.languageEvalCenterTotal} ₪<br>` +
             `<strong>אבחונים למטפלת:</strong> ${sum.diagnosticsTotal} ₪<br>` +
             `<strong>אבחונים למרכז:</strong> ${sum.diagnosticsCenterTotal} ₪<br>` +
@@ -2809,6 +3056,7 @@ ${d.fullName || '—'}
                 therapistPaymentDetails: collectTherapistPaymentDetails(),
                 meetingBonus,
                 group: monthGroups,
+                clinicalSupervision: clinicalSupervisionForNewMonthFromCurrent(),
                 extras: emptyExtrasState(),
                 rows: rowsFromTemplate(names)
             };
@@ -3287,6 +3535,7 @@ ${d.fullName || '—'}
     function calculate() {
         updateAllRowPaidStyles();
         updatePatientTableLayoutMode();
+        updateAllClinicalSupervisionRowTotals();
         const clientRate = parseFloat(clientRateInput?.value) || 0;
 
         getAllPatientTableRows().forEach(tr => {
@@ -3363,6 +3612,9 @@ ${d.fullName || '—'}
         els.totalUnpaidCancels.textContent = sum.totalUnpaid.toLocaleString('he-IL');
         els.individualTotal.textContent = sum.individualTotal.toLocaleString('he-IL');
         els.groupTotal.textContent = sum.groupTotal.toLocaleString('he-IL');
+        if (els.clinicalSupervisionTotal) {
+            els.clinicalSupervisionTotal.textContent = (sum.clinicalSupervisionTotal || 0).toLocaleString('he-IL');
+        }
         els.parentMeetingsTotal.textContent = sum.parentMeetingsTotal.toLocaleString('he-IL');
         els.languageEvalTherapistTotal.textContent = sum.languageEvalTherapistTotal.toLocaleString('he-IL');
         els.languageEvalCenterTotal.textContent = sum.languageEvalCenterTotal.toLocaleString('he-IL');
@@ -3443,6 +3695,8 @@ ${d.fullName || '—'}
     renderGroups([defaultGroupEntry()]);
     toggleGroupVisibility();
     wireGroupsListEvents();
+    toggleClinicalSupervisionVisibility();
+    wireClinicalSupervisionListEvents();
     toggleParentMeetingsVisibility();
     toggleLanguageEvaluationsVisibility();
     toggleDiagnosticsVisibility();
@@ -3512,6 +3766,18 @@ ${d.fullName || '—'}
 
     groupEnabledInput.addEventListener('change', () => {
         toggleGroupVisibility();
+        schedulePersist();
+    });
+    clinicalSupervisionEnabledInput?.addEventListener('change', () => {
+        toggleClinicalSupervisionVisibility();
+        schedulePersist();
+    });
+    addClinicalSupervisionBtn?.addEventListener('click', () => {
+        if (!clinicalSupervisionEnabledInput.checked) {
+            clinicalSupervisionEnabledInput.checked = true;
+            toggleClinicalSupervisionVisibility();
+        }
+        addClinicalSupervisionRow({});
         schedulePersist();
     });
     addGroupBtn?.addEventListener('click', () => {

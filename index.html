@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260804d">
+    <link rel="stylesheet" href="styles.css?v=20260903">
 </head>
 <body>
 <div class="wrap">
@@ -84,6 +84,31 @@
         <div id="groupFields" class="group-fields is-hidden">
             <div id="groupsList" class="groups-list"></div>
             <button type="button" class="btn-mini" id="addGroupBtn">+ הוסף קבוצה נוספת</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="check-row" style="padding-top:0;">
+            <input type="checkbox" id="clinicalSupervisionEnabled" />
+            <label for="clinicalSupervisionEnabled">האם מדריכה קלינאית?</label>
+        </div>
+        <div id="clinicalSupervisionFields" class="is-hidden">
+            <table class="mini-table clinical-supervision-table">
+                <thead>
+                    <tr>
+                        <th>שם המודרכת</th>
+                        <th>תאריכי מפגשים</th>
+                        <th>תשלום למפגש</th>
+                        <th>סה״כ שורה</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="clinicalSupervisionBody"></tbody>
+            </table>
+            <div class="mini-toolbar">
+                <button type="button" class="btn-mini" id="addClinicalSupervision">+ מודרכת</button>
+                <span class="mini-note">תשלום מהמרכז למטפלת על הדרכת קלינאיות אחרות — מספר מפגשים × תשלום למפגש.</span>
+            </div>
         </div>
     </div>
 
@@ -374,6 +399,8 @@
                 <dd id="grossIndividualTotal">0</dd>
                 <dt>סה״כ קבוצה (למטפלת)</dt>
                 <dd id="groupTotal">0</dd>
+                <dt>הדרכה קלינאית (למטפלת)</dt>
+                <dd id="clinicalSupervisionTotal">0</dd>
                 <dt>פגישות הורים (למטפלת)</dt>
                 <dd id="parentMeetingsTotal">0</dd>
                 <dt>הערכות שפה (למטפלת)</dt>
@@ -460,7 +487,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260804d"></script>
+<script src="app.js?v=20260903"></script>
 
 </body>
 </html>
