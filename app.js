@@ -1792,13 +1792,154 @@ ${d.fullName || '—'}
         });
         renumber();
         const countEl = document.getElementById('patientPayFilterCount');
-        if (countEl) {
+        if (countEl && getPatientViewMode() !== 'date') {
             countEl.textContent = filter === 'all' || !rows.length
                 ? ''
                 : `מוצגות ${visible} מתוך ${rows.length}`;
         }
     }
     window.applyPatientTableFilter = applyPatientTableFilter;
+
+    function getPatientViewMode() {
+        const el = document.getElementById('patientViewMode');
+        return el?.value === 'date' ? 'date' : 'patient';
+    }
+
+    function getSessionDateSortDir() {
+        const el = document.getElementById('sessionDateSort');
+        return el?.value === 'desc' ? 'desc' : 'asc';
+    }
+
+    /** מפתח מיון לתאריך — תומך ב-ISO ובפורמט חופשי כמו 4.2.26 */
+    function dateSortKey(raw) {
+        const v = String(raw == null ? '' : raw).trim();
+        if (!v) return Number.POSITIVE_INFINITY;
+        if (isIsoDate(v)) return v;
+        const m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+        if (m) {
+            let year = Number(m[3]);
+            if (year < 100) year += 2000;
+            const month = String(Number(m[2])).padStart(2, '0');
+            const day = String(Number(m[1])).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return `~${v}`;
+    }
+
+    function collectChronologicalSessions() {
+        const role = activeRole();
+        const clientRate = parseFloat(clientRateInput?.value) || 0;
+        const stMap = sessionTypeMapFrom(collectSessionTypes());
+        const payFilter = getPatientPayFilterValue();
+        const items = [];
+        getAllPatientTableRows().forEach((tr) => {
+            if (!rowMatchesPayFilter(tr, payFilter)) return;
+            assignPatientRowOrder(tr);
+            const name = tr.querySelector('.col-name input')?.value.trim() || 'ללא שם';
+            const rowOrder = tr.dataset.rowOrder || '';
+            readSessionEntriesFromRow(tr).forEach((entry, entryIdx) => {
+                const date = String(entry.date || '').trim();
+                if (!date) return;
+                const typeLabel = sessionTypeLabelForEntry(entry, role, stMap);
+                const charge = clientChargeForSession(entry, role, clientRate, stMap);
+                const defaultCharge = defaultClientChargeForSession(entry, role, clientRate, stMap);
+                const hasCustom = entry.clientCharge != null && entry.clientCharge !== '' && charge !== defaultCharge;
+                items.push({
+                    date,
+                    sortKey: dateSortKey(date),
+                    name,
+                    typeLabel,
+                    charge,
+                    hasCustom,
+                    rowOrder,
+                    entryIdx
+                });
+            });
+        });
+        return items;
+    }
+
+    function renderSessionChronoView() {
+        const body = document.getElementById('sessionChronoBody');
+        const emptyEl = document.getElementById('sessionChronoEmpty');
+        const table = document.getElementById('sessionChronoTable');
+        if (!body) return;
+        const dir = getSessionDateSortDir();
+        const items = collectChronologicalSessions().sort((a, b) => {
+            if (a.sortKey < b.sortKey) return dir === 'asc' ? -1 : 1;
+            if (a.sortKey > b.sortKey) return dir === 'asc' ? 1 : -1;
+            const byName = a.name.localeCompare(b.name, 'he');
+            if (byName) return byName;
+            return (Number(a.rowOrder) || 0) - (Number(b.rowOrder) || 0) || a.entryIdx - b.entryIdx;
+        });
+        body.innerHTML = items.map((item, i) => {
+            const chargeText = item.charge > 0
+                ? `${item.charge.toLocaleString('he-IL')} ₪${item.hasCustom ? ' *' : ''}`
+                : '—';
+            return `<tr data-row-order="${escapeAttr(item.rowOrder)}" tabindex="0" title="מעבר לעריכת המטופל">
+                <td>${i + 1}</td>
+                <td>${escapeHtml(formatPrintDateValue(item.date))}</td>
+                <td>${escapeHtml(item.name)}</td>
+                <td>${escapeHtml(item.typeLabel || '—')}</td>
+                <td>${escapeHtml(chargeText)}</td>
+            </tr>`;
+        }).join('');
+        if (emptyEl) emptyEl.classList.toggle('is-hidden', items.length > 0);
+        if (table) table.classList.toggle('is-hidden', items.length === 0);
+        const countEl = document.getElementById('patientPayFilterCount');
+        if (countEl && getPatientViewMode() === 'date') {
+            countEl.textContent = items.length
+                ? `${items.length} מפגשים`
+                : '';
+        }
+    }
+
+    function flashPatientRow(tr) {
+        if (!tr) return;
+        tr.classList.remove('patient-row-flash');
+        // restart animation
+        void tr.offsetWidth;
+        tr.classList.add('patient-row-flash');
+        clearTimeout(tr._flashTimer);
+        tr._flashTimer = setTimeout(() => tr.classList.remove('patient-row-flash'), 1600);
+    }
+
+    function jumpToPatientRow(rowOrder) {
+        const tr = getAllPatientTableRows().find((r) => r.dataset.rowOrder === String(rowOrder));
+        if (!tr) return;
+        const viewModeEl = document.getElementById('patientViewMode');
+        if (viewModeEl && viewModeEl.value !== 'patient') {
+            viewModeEl.value = 'patient';
+            applyPatientViewMode();
+        }
+        // אם השורה מסוננת החוצה — הצג הכל כדי לאפשר עריכה
+        if (!tbody.contains(tr)) {
+            const filterEl = document.getElementById('patientPayFilter');
+            if (filterEl && filterEl.value !== 'all') {
+                filterEl.value = 'all';
+                applyPatientTableFilter('all');
+            }
+        }
+        tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        flashPatientRow(tr);
+        tr.querySelector('.col-name input')?.focus();
+    }
+
+    function applyPatientViewMode() {
+        const mode = getPatientViewMode();
+        const isDate = mode === 'date';
+        patientTableWrap?.classList.toggle('is-hidden', isDate);
+        document.getElementById('sessionChronoWrap')?.classList.toggle('is-hidden', !isDate);
+        document.querySelectorAll('.date-view-only').forEach((el) => {
+            el.classList.toggle('is-hidden', !isDate);
+        });
+        const addRowBtn = document.getElementById('addRow');
+        const clearAllBtn = document.getElementById('clearAll');
+        if (addRowBtn) addRowBtn.disabled = isDate;
+        if (clearAllBtn) clearAllBtn.disabled = isDate;
+        if (isDate) renderSessionChronoView();
+        else applyPatientTableFilter();
+    }
 
     function buildPaymentRoutingSummary(state, sum) {
         const clientRate = parseFloat(state.clientRate) || 0;
@@ -3561,6 +3702,10 @@ ${d.fullName || '—'}
                 formatRowTotalLabel(rowTotal, sessionsPart.meetings, paidCancelCount, sessionsPart.chargedMeetings);
         });
 
+        if (getPatientViewMode() === 'date') {
+            renderSessionChronoView();
+        }
+
         const sum = getSummary();
         const els = summaryEls;
         renderEffectiveRatesSummary(sum.effectiveTherapistRates);
@@ -3707,6 +3852,7 @@ ${d.fullName || '—'}
 
     wireSummaryComponentToggles();
     load();
+    applyPatientViewMode();
     applyPatientTableFilter();
 
     document.getElementById('addRow').addEventListener('click', () => {
@@ -3716,6 +3862,25 @@ ${d.fullName || '—'}
 
     document.getElementById('patientPayFilter')?.addEventListener('change', (e) => {
         applyPatientTableFilter(e.target.value);
+        if (getPatientViewMode() === 'date') renderSessionChronoView();
+    });
+    document.getElementById('patientViewMode')?.addEventListener('change', () => {
+        applyPatientViewMode();
+    });
+    document.getElementById('sessionDateSort')?.addEventListener('change', () => {
+        renderSessionChronoView();
+    });
+    document.getElementById('sessionChronoBody')?.addEventListener('click', (e) => {
+        const tr = e.target.closest('tr[data-row-order]');
+        if (!tr) return;
+        jumpToPatientRow(tr.dataset.rowOrder);
+    });
+    document.getElementById('sessionChronoBody')?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const tr = e.target.closest('tr[data-row-order]');
+        if (!tr) return;
+        e.preventDefault();
+        jumpToPatientRow(tr.dataset.rowOrder);
     });
 
     document.getElementById('clearAll').addEventListener('click', () => {
@@ -4068,11 +4233,18 @@ ${d.fullName || '—'}
         if (printViewState) return;
         calculate();
         const payFilterSelect = document.getElementById('patientPayFilter');
+        const viewModeSelect = document.getElementById('patientViewMode');
         printViewState = {
             payFilter: getPatientPayFilterValue(),
             payFilterSelect,
+            viewMode: getPatientViewMode(),
+            viewModeSelect,
             rowMirrors: []
         };
+        if (viewModeSelect && viewModeSelect.value !== 'patient') {
+            viewModeSelect.value = 'patient';
+            applyPatientViewMode();
+        }
         if (payFilterSelect) payFilterSelect.value = 'all';
         applyPatientTableFilter('all');
         document.body.classList.add('print-view-active');
@@ -4090,7 +4262,12 @@ ${d.fullName || '—'}
         if (printViewState.payFilterSelect) {
             printViewState.payFilterSelect.value = printViewState.payFilter;
         }
-        applyPatientTableFilter(printViewState.payFilter);
+        if (printViewState.viewModeSelect) {
+            printViewState.viewModeSelect.value = printViewState.viewMode;
+            applyPatientViewMode();
+        } else {
+            applyPatientTableFilter(printViewState.payFilter);
+        }
         document.body.classList.remove('print-view-active');
         printViewState = null;
     }

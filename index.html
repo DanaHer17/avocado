@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260903">
+    <link rel="stylesheet" href="styles.css?v=20260922">
 </head>
 <body>
 <div class="wrap">
@@ -117,11 +117,21 @@
             <button type="button" class="btn btn-primary" id="addRow">+ הוספת מטופל</button>
             <button type="button" class="btn btn-ghost" id="clearAll">איפוס טבלה</button>
             <button type="button" class="btn btn-ghost" id="saveNow" title="השמירה האוטומטית פעילה תמיד">שמירה עכשיו</button>
+            <label for="patientViewMode" class="toolbar-filter-label">תצוגה:</label>
+            <select id="patientViewMode" class="toolbar-filter-select" aria-label="מצב תצוגת מטופלים">
+                <option value="patient">לפי מטופל</option>
+                <option value="date">לפי תאריך</option>
+            </select>
             <label for="patientPayFilter" class="toolbar-filter-label">הצג:</label>
             <select id="patientPayFilter" class="toolbar-filter-select" aria-label="סינון לפי יעד תשלום" onchange="window.applyPatientTableFilter && window.applyPatientTableFilter(this.value)">
                 <option value="all">כל המטופלים</option>
                 <option value="center">משלמים למרכז</option>
                 <option value="therapist">משלמים למטפלת</option>
+            </select>
+            <label for="sessionDateSort" class="toolbar-filter-label date-view-only is-hidden">סדר:</label>
+            <select id="sessionDateSort" class="toolbar-filter-select date-view-only is-hidden" aria-label="סדר תאריכי מפגשים">
+                <option value="asc">תאריך עולה</option>
+                <option value="desc">תאריך יורד</option>
             </select>
             <span class="toolbar-filter-count" id="patientPayFilterCount" aria-live="polite"></span>
             <span class="save-hint" id="saveHint" aria-live="polite"></span>
@@ -146,6 +156,24 @@
                 </thead>
                 <tbody></tbody>
             </table>
+        </div>
+        <div id="sessionChronoWrap" class="session-chrono-wrap is-hidden no-print" aria-live="polite">
+            <p class="session-chrono-note">תצוגת קריאה של מפגשים בודדים לפי תאריך. לחיצה על שורה מחזירה לעריכת המטופל.</p>
+            <div class="scroll-x">
+                <table id="sessionChronoTable" class="session-chrono-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>תאריך</th>
+                            <th>שם המטופל</th>
+                            <th>סוג מפגש</th>
+                            <th>חיוב</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessionChronoBody"></tbody>
+                </table>
+            </div>
+            <p class="session-chrono-empty is-hidden" id="sessionChronoEmpty">אין מפגשים עם תאריך להצגה.</p>
         </div>
     </div>
 
@@ -487,7 +515,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260903"></script>
+<script src="app.js?v=20260922"></script>
 
 </body>
 </html>
