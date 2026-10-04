@@ -41,6 +41,8 @@
     const PERSIST_DEBOUNCE_MS = 400;
     const therapistRoleInput = document.getElementById('therapistRole');
     const roleSessionTypesCard = document.getElementById('roleSessionTypesCard');
+    const sessionTypesEnabledInput = document.getElementById('sessionTypesEnabled');
+    const sessionTypesFields = document.getElementById('sessionTypesFields');
     const sessionTypesBody = document.getElementById('sessionTypesBody');
     const addSessionTypeBtn = document.getElementById('addSessionTypeBtn');
     const therapistPayFullNameInput = document.getElementById('therapistPayFullName');
@@ -189,7 +191,19 @@
     }
 
     function roleUsesSessionTypes() {
-        return activeRole() !== ROLE_SPEECH;
+        return !!sessionTypesEnabledInput?.checked;
+    }
+
+    function defaultSessionTypesEnabled(role, savedFlag, rows) {
+        if (typeof savedFlag === 'boolean') return savedFlag;
+        if (role !== ROLE_SPEECH) return true;
+        return (Array.isArray(rows) ? rows : []).some((row) =>
+            (row.sessionEntries || []).some((entry) => String((entry && entry.sessionTypeId) || '').trim())
+        );
+    }
+
+    function toggleSessionTypesVisibility() {
+        sessionTypesFields?.classList.toggle('is-hidden', !roleUsesSessionTypes());
     }
 
     function makeSessionTypeId() {
@@ -235,9 +249,12 @@
     }
 
     function sessionTypeOptionsHtml(selectedId) {
-        return collectSessionTypes()
+        const options = collectSessionTypes()
             .map((st) => `<option value="${escapeAttr(st.id)}" ${st.id === selectedId ? 'selected' : ''}>${escapeHtml(st.name || 'ללא שם')}</option>`)
             .join('');
+        if (activeRole() !== ROLE_SPEECH) return options;
+        const regularSelected = !selectedId ? 'selected' : '';
+        return `<option value="" ${regularSelected}>תעריף רגיל</option>${options}`;
     }
 
     function addSessionTypeRow(data) {
@@ -292,11 +309,9 @@
     }
 
     function defaultClientChargeForSession(entry, role, clientRate, stMap) {
-        if (role !== ROLE_SPEECH) {
-            const st = stMap[String(entry.sessionTypeId || '')];
-            return st ? st.fullPrice : clientRate;
-        }
-        return clientRate;
+        const typeId = String((entry && entry.sessionTypeId) || '').trim();
+        const st = typeId && stMap ? stMap[typeId] : null;
+        return st ? st.fullPrice : clientRate;
     }
 
     function clientChargeForSession(entry, role, clientRate, stMap) {
@@ -1544,12 +1559,12 @@
             let therapistPay = therapistRate;
             let typeKey = '_default';
             let typeLabel = 'מפגשים פרטניים';
-            if (role !== ROLE_SPEECH) {
-                const typeId = String(entry.sessionTypeId || '').trim();
+            const typeId = String(entry.sessionTypeId || '').trim();
+            if (typeId) {
                 const st = stMap[typeId];
                 therapistPay = therapistPayForSessionType(st, therapistRate);
-                typeKey = typeId || '_none';
-                typeLabel = st ? st.name : (typeId ? 'סוג מפגש' : 'ללא סוג מפגש');
+                typeKey = st ? typeId : '_none';
+                typeLabel = st ? st.name : 'סוג מפגש';
             }
             therapist += therapistPay;
             if (byType) bumpSessionTypeBucket(byType, typeKey, typeLabel, charge, therapistPay, 1);
@@ -2053,6 +2068,7 @@ ${d.fullName || '—'}
             baseSalary: baseSalaryInput?.value,
             clientRate: clientRateInput?.value,
             therapistRole: activeRole(),
+            sessionTypesEnabled: roleUsesSessionTypes(),
             sessionTypes: collectSessionTypes(),
             therapistPaymentDetails: collectTherapistPaymentDetails(),
             meetingBonus: meetingBonusInput?.checked,
@@ -2070,7 +2086,14 @@ ${d.fullName || '—'}
         if (s.clientRate != null) clientRateInput.value = String(s.clientRate);
         therapistRoleInput.value = s.therapistRole || ROLE_SPEECH;
         applySessionTypes(s.sessionTypes);
-        roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
+        if (sessionTypesEnabledInput) {
+            sessionTypesEnabledInput.checked = defaultSessionTypesEnabled(
+                therapistRoleInput.value,
+                s.sessionTypesEnabled,
+                s.rows
+            );
+        }
+        toggleSessionTypesVisibility();
         applyTherapistPaymentDetails(s.therapistPaymentDetails);
         meetingBonusInput.checked = !!s.meetingBonus;
         applyGroupState(s.group);
@@ -2265,7 +2288,7 @@ ${d.fullName || '—'}
         let paidToTherapistTreatmentCount = 0;
         const paidDirectBreakdown = { center: [], therapist: [] };
         const sessionTypeBuckets = Object.create(null);
-        const usesSessionTypes = role !== ROLE_SPEECH;
+        const usesSessionTypes = roleUsesSessionTypes();
         getAllPatientTableRows().forEach(tr => {
             const rd = rowDataFromTr(tr);
             const patientLabel = rd.name || 'מטופל/ת';
@@ -3141,6 +3164,7 @@ ${d.fullName || '—'}
             baseSalary: core.baseSalary,
             clientRate: core.clientRate,
             therapistRole: core.therapistRole,
+            sessionTypesEnabled: core.sessionTypesEnabled,
             sessionTypes: core.sessionTypes,
             therapistPaymentDetails: core.therapistPaymentDetails,
             meetingBonus: core.meetingBonus,
@@ -3193,6 +3217,7 @@ ${d.fullName || '—'}
                 baseSalary,
                 clientRate,
                 therapistRole: activeRole(),
+                sessionTypesEnabled: roleUsesSessionTypes(),
                 sessionTypes: collectSessionTypes(),
                 therapistPaymentDetails: collectTherapistPaymentDetails(),
                 meetingBonus,
@@ -3247,6 +3272,7 @@ ${d.fullName || '—'}
                 baseSalary: currentState.baseSalary,
                 clientRate: currentState.clientRate,
                 therapistRole: currentState.therapistRole,
+                sessionTypesEnabled: currentState.sessionTypesEnabled,
                 sessionTypes: currentState.sessionTypes,
                 therapistPaymentDetails: currentState.therapistPaymentDetails,
                 meetingBonus: currentState.meetingBonus,
@@ -3376,7 +3402,6 @@ ${d.fullName || '—'}
     }
 
     function sessionTypeLabelForEntry(entry, role, stMap) {
-        if (role === ROLE_SPEECH) return '';
         const typeId = String((entry && entry.sessionTypeId) == null ? '' : entry.sessionTypeId).trim();
         if (!typeId) return '';
         const st = stMap && stMap[typeId];
@@ -3816,6 +3841,7 @@ ${d.fullName || '—'}
                 baseSalary: baseSalaryInput?.value,
                 clientRate: clientRateInput?.value,
                 therapistRole: activeRole(),
+                sessionTypesEnabled: roleUsesSessionTypes(),
                 sessionTypes: collectSessionTypes(),
                 therapistPaymentDetails: collectTherapistPaymentDetails(),
                 meetingBonus: meetingBonusInput?.checked,
@@ -3836,7 +3862,10 @@ ${d.fullName || '—'}
 
     applySessionTypes(defaultSessionTypes());
     applyTherapistPaymentDetails();
-    roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
+    if (sessionTypesEnabledInput) {
+        sessionTypesEnabledInput.checked = defaultSessionTypesEnabled(activeRole());
+    }
+    toggleSessionTypesVisibility();
     renderGroups([defaultGroupEntry()]);
     toggleGroupVisibility();
     wireGroupsListEvents();
@@ -3911,7 +3940,16 @@ ${d.fullName || '—'}
         el?.addEventListener('change', schedulePersist);
     });
     therapistRoleInput.addEventListener('change', () => {
-        roleSessionTypesCard.classList.toggle('is-visible', roleUsesSessionTypes());
+        refreshSessionTypeSelectsInRows();
+        refreshDateSlotsForRoleChange();
+        updateAllSessionSlotColors();
+        schedulePersist();
+    });
+    sessionTypesEnabledInput?.addEventListener('change', () => {
+        if (sessionTypesEnabledInput.checked && !collectSessionTypes().length) {
+            applySessionTypes(defaultSessionTypes());
+        }
+        toggleSessionTypesVisibility();
         refreshDateSlotsForRoleChange();
         updateAllSessionSlotColors();
         schedulePersist();

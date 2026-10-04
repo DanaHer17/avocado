@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>דוח סיכום טיפולים</title>
-    <link rel="stylesheet" href="styles.css?v=20260924">
+    <link rel="stylesheet" href="styles.css?v=20261004b">
 </head>
 <body>
 <div class="wrap">
@@ -44,17 +44,22 @@
         </div>
     </div>
 
-    <div class="card role-session-card" id="roleSessionTypesCard">
-        <h2 style="font-size:1rem;margin:0 0 0.75rem;">סוגי מפגש לתמחור (לפי תפקיד)</h2>
-        <table class="session-type-table">
-            <thead>
-                <tr><th>סוג מפגש</th><th>מחיר מלא</th><th>למטפלת</th><th></th></tr>
-            </thead>
-            <tbody id="sessionTypesBody"></tbody>
-        </table>
-        <div class="mini-toolbar">
-            <button type="button" class="btn-mini" id="addSessionTypeBtn">+ הוספת סוג מפגש</button>
-            <span class="mini-note">אפשר לרשום טקסט חופשי לסוג המפגש; כל מפגש בודד בטבלה יקבל סוג כזה לחישוב.</span>
+    <div class="card" id="roleSessionTypesCard">
+        <div class="check-row" style="padding-top:0;">
+            <input type="checkbox" id="sessionTypesEnabled" />
+            <label for="sessionTypesEnabled">יותר מסוג מפגש אחד</label>
+        </div>
+        <div id="sessionTypesFields" class="is-hidden">
+            <table class="session-type-table">
+                <thead>
+                    <tr><th>סוג מפגש</th><th>מחיר מלא</th><th>למטפלת</th><th></th></tr>
+                </thead>
+                <tbody id="sessionTypesBody"></tbody>
+            </table>
+            <div class="mini-toolbar">
+                <button type="button" class="btn-mini" id="addSessionTypeBtn">+ הוספת סוג מפגש</button>
+                <span class="mini-note">אפשר לרשום טקסט חופשי לסוג המפגש. בקלינאות תקשורת «תעריף רגיל» נשאר לפי שכר הבסיס ומחיר הטיפול; סוג נוסף מאפשר תעריף שונה למפגש.</span>
+            </div>
         </div>
     </div>
 
@@ -519,7 +524,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260922"></script>
+<script src="app.js?v=20261004b"></script>
 
 </body>
 </html>
