@@ -1651,13 +1651,70 @@
         };
     }
 
-    function buildTherapistWhatsappText(meetings, amount, therapistPaymentDetails, paidCancelCount) {
-        const d = therapistPaymentDetails || collectTherapistPaymentDetails();
-        const cancelPart = paidCancelCount > 0
-            ? `\n(+ ${paidCancelCount} ביטול בתשלום)`
+    function hebrewMonthYearLabel(periodValue) {
+        const months = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+        const parts = String(periodValue || '').split('-');
+        if (parts.length < 2) return '';
+        const month = months[(parseInt(parts[1], 10) || 0) - 1];
+        if (!month) return '';
+        return `${month} ${parts[0]}`;
+    }
+
+    function parentMessageDateLabel(raw) {
+        const v = String(raw == null ? '' : raw).trim();
+        const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!iso) return v;
+        return `${Number(iso[3])}.${Number(iso[2])}.${iso[1]}`;
+    }
+
+    function parentMessageSessions(rd) {
+        const clientRate = parseFloat(clientRateInput?.value) || 0;
+        const role = activeRole();
+        const stMap = sessionTypeMapFrom(collectSessionTypes());
+        return normalizeSessionEntries(rd.sessionEntries, rd.dates, rd.sessions)
+            .filter((entry) => entry && String(entry.date || '').trim())
+            .map((entry) => ({
+                sort: String(entry.date).trim(),
+                label: parentMessageDateLabel(entry.date),
+                charge: clientChargeForSession(entry, role, clientRate, stMap)
+            }))
+            .sort((a, b) => a.sort.localeCompare(b.sort));
+    }
+
+    function buildParentPaymentIntro(rd, parts) {
+        const monthLabel = hebrewMonthYearLabel(periodInput?.value);
+        const monthPhrase = monthLabel ? `בחודש ${monthLabel}` : 'החודש';
+        const sessions = parentMessageSessions(rd);
+        const count = sessions.length;
+        const countPhrase = count === 1
+            ? 'התקיים מפגש אחד בתאריך:'
+            : `התקיימו ${count.toLocaleString('he-IL')} מפגשים בתאריכים:`;
+        const charges = [...new Set(sessions.map((session) => session.charge))];
+        const uniform = charges.length === 1;
+        const dateLines = sessions.length
+            ? sessions.map((session) => (
+                uniform
+                    ? session.label
+                    : `${session.label} — ${session.charge.toLocaleString('he-IL')} ש"ח`
+            )).join('\n')
+            : '—';
+        const amount = (parts.rowTotal || 0).toLocaleString('he-IL');
+        const cancelPart = parts.paidCancelCount > 0
+            ? `\n(+ ${Number(parts.paidCancelCount).toLocaleString('he-IL')} ביטול בתשלום)`
             : '';
+        const costLine = uniform
+            ? `עלות כל מפגש ${charges[0].toLocaleString('he-IL')} ש"ח${cancelPart}\nולכן יש להעביר סכום של ${amount} ש"ח ל:`
+            : `${cancelPart ? `${cancelPart.trim()}\n` : ''}יש להעביר סכום של ${amount} ש"ח ל:`;
         return `היי!
-החודש התקיימו ${meetings} מפגשים${cancelPart} עליהם יש להעביר סכום של ${amount} ש"ח ל
+${monthPhrase} ${countPhrase}
+${dateLines}
+
+${costLine}`;
+    }
+
+    function buildTherapistWhatsappText(intro, therapistPaymentDetails) {
+        const d = therapistPaymentDetails || collectTherapistPaymentDetails();
+        return `${intro}
 ${d.fullName || '—'}
 בנק ${d.bankName || '—'}
 סניף ${d.branchNumber || '—'}
@@ -1665,14 +1722,9 @@ ${d.fullName || '—'}
 ניתן לשלם גם בביט/פייבוקס`;
     }
 
-    function buildCenterWhatsappText(meetings, amount, paidCancelCount) {
-        const cancelPart = paidCancelCount > 0
-            ? `\n(+ ${paidCancelCount} ביטול בתשלום)`
-            : '';
-        return `היי!
-החודש התקיימו ${meetings} מפגשים${cancelPart}
-עליהם יש להעביר סכום של ${amount} ש"ח
-ל - "אבוקדו - מרכז התפתחותי לילדים בע"מ"
+    function buildCenterWhatsappText(intro) {
+        return `${intro}
+"אבוקדו - מרכז התפתחותי לילדים בע"מ"
 בנק לאומי 10
 סניף פרדס חנה 954
 מספר חשבון 262083`;
@@ -1687,16 +1739,14 @@ ${d.fullName || '—'}
             return;
         }
         const parts = rowBillingParts(rd);
-        const meetings = parts.billableMeetings.toLocaleString('he-IL');
-        const transferAmount = parts.rowTotal.toLocaleString('he-IL');
-        const cancelCount = parts.paidCancelCount || 0;
+        const intro = buildParentPaymentIntro(rd, parts);
         const therapistPaymentDetails = collectTherapistPaymentDetails();
         const blocks = [];
         if (paidToTherapist) {
-            blocks.push(buildTherapistWhatsappText(meetings, transferAmount, therapistPaymentDetails, cancelCount));
+            blocks.push(buildTherapistWhatsappText(intro, therapistPaymentDetails));
         }
         if (paidToCenter) {
-            blocks.push(buildCenterWhatsappText(meetings, transferAmount, cancelCount));
+            blocks.push(buildCenterWhatsappText(intro));
         }
         const patientName = rd.name || 'ללא שם';
         paymentMsgTitle.textContent = `הודעה לוואטסאפ - ${patientName}`;
